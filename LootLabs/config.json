@@ -1,0 +1,27 @@
+{
+  "api_token": "6188a062436d2689127ed8a1958b513b6cb2ad4efd0b12cccd7ee5aa075c2906",
+  "api_url_create": "https://creators.lootlabs.gg/api/public/content_locker",
+  "api_url_encrypt": "https://creators.lootlabs.gg/api/public/url_encryptor",
+  "quests": [
+    {
+      "id": "animula_main",
+      "title": "Animula - Get Key",
+      "tier_id": 4,
+      "number_of_tasks": 3,
+      "theme": 3,
+      "thumbnail": "https://raw.githubusercontent.com/AnimulaOffcial/UI/main/logo.png",
+      "description": "Maximum Profit - 3 steps - Highest payout"
+    },
+    {
+      "id": "animula_alt",
+      "title": "Animula - Alternative Route",
+      "tier_id": 3,
+      "number_of_tasks": 3,
+      "theme": 3,
+      "thumbnail": "https://raw.githubusercontent.com/AnimulaOffcial/UI/main/logo.png",
+      "description": "Profit Maximization - 3 steps - High payout"
+    }
+  ],
+  "destination_base": "https://animula.wtf/getkey/",
+  "fallback_mode": "simulate"
+}

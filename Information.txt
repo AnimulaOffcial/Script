@@ -1,0 +1,34 @@
+# ==============================================================================
+# ANIMULA PROJECT — CONFIGURATION & CREDENTIALS
+# ==============================================================================
+
+[Secret]
+MASTER_SECRET            = FurinaXGoza1@
+
+[Github]
+TokenGithub              = YOUR_GITHUB_PERSONAL_ACCESS_TOKEN
+UrlUI(MainUI)            = https://github.com/AnimulaOffcial/UI
+UrlScript(MainScript)    = https://github.com/AnimulaOffcial/Script
+
+[Discord]
+TokenBot1                = 
+TokenBot2                = 
+WebHookReport            = 
+WebhookLog               = 
+
+[Supabase]
+TokenPublic(Publish)     = sb_publishable_Bzyz0ERndBTstg4erRQmGA_AzlMUDpO
+TokenPublic(ANON)        = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeWtxYmtmbGpxeHdmcWRmZnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4Mzg0NDIsImV4cCI6MjEwMzQxNDQ0Mn0.54QPoPN3LdV4gEqjEZydpI-bd3JZ_G9RZwlJIlxz3v4
+Url                      = https://supabase.com/dashboard/project/eiykqbkfljqxwfqdffpo/settings/general
+
+[LootLabs]
+TokenApiKeys             = 6188a062436d2689127ed8a1958b513b6cb2ad4efd0b12cccd7ee5aa075c2906
+
+[Payment]
+PaypalToken              = 
+Paypal                   = 
+
+Btc                      = bc1qt03z0756r5vmq5xh76dzx9svnkan964l3q6txy
+Eth                      = 0xe84E8AE82c98BE439732653a0A6DdA26BA810733
+Usdt                     = 0xe84E8AE82c98BE439732653a0A6DdA26BA810733
+Etc                      = 0xe84E8AE82c98BE439732653a0A6DdA26BA810733
