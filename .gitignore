@@ -17,6 +17,5 @@ yarn-error.log*
 Thumbs.db
 
 # Workspace rules
-/Script/
-/Web/
-/Executor/
+# /Executor/
+
