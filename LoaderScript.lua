@@ -217,6 +217,37 @@ corner(main, UDim.new(0,16))
 stroke(main, T.border, 1.5, 0.15)
 main.ClipsDescendants = true
 
+-- light biru tiap sudut (4 corner glow)
+for _, pos in ipairs({
+    UDim2.fromOffset(0,0),
+    UDim2.new(1,-22,0,0),
+    UDim2.fromOffset(0,398),
+    UDim2.new(1,-22,1,-22),
+}) do
+    local glow = Instance.new("Frame")
+    glow.BackgroundColor3 = T.primary
+    glow.BackgroundTransparency = 0.75
+    glow.Size = UDim2.fromOffset(22,22)
+    glow.Position = pos
+    glow.ZIndex = 10
+    glow.BorderSizePixel = 0
+    glow.Parent = main
+    corner(glow, UDim.new(1,0))
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new(ColorSequenceKeypoint.new(0, T.primary), ColorSequenceKeypoint.new(1, T.accent))
+    g.Rotation = 45
+    g.Parent = glow
+    -- inner dot biar makin light
+    local dot = Instance.new("Frame")
+    dot.BackgroundColor3 = Color3.new(1,1,1)
+    dot.BackgroundTransparency = 0.6
+    dot.Size = UDim2.fromOffset(6,6)
+    dot.Position = UDim2.fromScale(0.5,0.5)
+    dot.AnchorPoint = Vector2.new(0.5,0.5)
+    dot.Parent = glow
+    corner(dot, UDim.new(1,0))
+end
+
 -- shadow
 do
     local s = Instance.new("Frame")
