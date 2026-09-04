@@ -80,48 +80,80 @@ local function gradient(p: Instance, c1: Color3, c2: Color3, rot: number?)
     g.Color = ColorSequence.new(c1,c2); g.Rotation = rot or 90; g.Parent=p; return g
 end
 
--- supabase: cek key premium
+-- supabase: cek & redeem key (bind ke roblox UserId) — anti bobol via RPC
 local function checkPremiumKey(key: string): (boolean, string)
+    return checkKeyViaRpc(key)
+end
+
+local function checkKeyViaRpc(key: string): (boolean, string)
     if key == "" then return false, "key kosong" end
-    -- pake anon key, query table 'keys' (kolom key, used, game, expires)
-    -- kalo gak ada table keys ya fallback ke validasi local (prefix ANIMULA-)
+    if not string.match(key, "^Animula%-(pk|fk)%-[A-Za-z0-9][A-Za-z0-9][A-Za-z0-9]") then
+        -- quick reject biar gak spam supabase
+        if #key < 10 then return false, "key kosong" end
+    end
+    local fn: any = (request or http_request or (syn and syn.request) or (http and http.request))
+    if fn then
+        local ok, res = pcall(function()
+            return fn({
+                Url = SUPABASE_URL .. "/rest/v1/rpc/animula_check_key",
+                Method = "POST",
+                Headers = {
+                    ["apikey"] = SUPABASE_ANON,
+                    ["Authorization"] = "Bearer " .. SUPABASE_ANON,
+                    ["Content-Type"] = "application/json",
+                },
+                Body = HttpService:JSONEncode({ p_key = key }),
+            })
+        end)
+        if ok and res and res.StatusCode and res.StatusCode >= 200 and res.StatusCode < 300 then
+            local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
+            if ok2 and data then
+                if data.ok then
+                    local dl: string = if data.days_left == nil then "unlimited" else tostring(data.days_left) .. " hari"
+                    return true, "valid (" .. dl .. ")"
+                else
+                    return false, data.error or "tidak valid"
+                end
+            end
+        end
+    end
+    -- fallback: format local (biar gak hard depend) — tapi tetap cek prefix pk/fk 25
+    if string.match(key, "^Animula%-(pk|fk)%-[A-Za-z0-9][A-Za-z0-9][A-Za-z0-9]") and #key >= 34 then
+        return true, "valid (offline)"
+    end
+    return false, "gagal cek, cek internet / format key"
+end
+
+local function redeemKey(key: string): (boolean, string)
+    local uid: number = LocalPlayer and LocalPlayer.UserId or 0
+    local uname: string = LocalPlayer and LocalPlayer.Name or ""
+    if uid <= 0 then return false, "userId tidak ketemu" end
+    local fn: any = (request or http_request or (syn and syn.request) or (http and http.request))
+    if not fn then return false, "executor tidak support http" end
     local ok, res = pcall(function()
-        return (request or http_request or syn and syn.request)({
-            Url = SUPABASE_URL .. "/rest/v1/keys?key=eq." .. HttpService:UrlEncode(key) .. "&select=*",
-            Method = "GET",
+        return fn({
+            Url = SUPABASE_URL .. "/rest/v1/rpc/animula_redeem_key",
+            Method = "POST",
             Headers = {
                 ["apikey"] = SUPABASE_ANON,
                 ["Authorization"] = "Bearer " .. SUPABASE_ANON,
                 ["Content-Type"] = "application/json",
             },
+            Body = HttpService:JSONEncode({
+                p_key = key,
+                p_roblox_user_id = uid,
+                p_roblox_username = uname,
+                p_ip = "",
+            }),
         })
     end)
-    if ok and res and res.StatusCode == 200 then
+    if ok and res and res.StatusCode and res.StatusCode >= 200 and res.StatusCode < 300 then
         local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
-        if ok2 and typeof(data) == "table" and #data > 0 then
-            local row: any = data[1]
-            -- cek expired
-            if row.expires and row.expires ~= "" then
-                local expOk, expTime = pcall(function() return DateTime.fromIsoDate(row.expires).UnixTimestamp end)
-                if expOk and expTime and os.time() > expTime then
-                    return false, "key expired"
-                end
-            end
-            return true, "valid"
-        else
-            -- fallback: cek prefix local biar gak hard depend supabase
-            if string.sub(key,1,8) == "ANIMULA-" and #key >= 16 then
-                return true, "valid (local)"
-            end
-            return false, "key tidak ditemukan"
+        if ok2 and data then
+            if data.ok then return true, data.message or "redeemed" else return false, data.error or "gagal redeem" end
         end
-    else
-        -- no http? fallback local
-        if string.sub(key,1,8) == "ANIMULA-" and #key >= 16 then
-            return true, "valid (offline)"
-        end
-        return false, "gagal cek supabase, cek internet"
     end
+    return false, "gagal redeem, cek internet"
 end
 
 -- load game script via http (raw github)
@@ -429,28 +461,43 @@ do
         statusLbl.TextColor3 = T.dim
         tween(keyBox:FindFirstChildOfClass("UIStroke") :: any, {Color=T.primary}, 0.15)
         task.wait(0.1)
-        local ok, msg = checkPremiumKey(key)
-        if ok then
+        -- redeem dulu (bind ke roblox UserId) — baru cek
+        local okR, msgR = redeemKey(key)
+        if okR then
             premiumUnlocked = true
-            statusLbl.Text = "✓ " .. msg
+            statusLbl.Text = "✓ " .. msgR
             statusLbl.TextColor3 = T.success
             gameWrap.Visible = true
             tween(checkBtn, {BackgroundColor3=T.success}, 0.2)
             checkBtn.Text = "Valid ✓"
             notify("Keys valid", "premium kebuka, pilih game lalu load", true)
         else
-            premiumUnlocked = false
-            statusLbl.Text = "✗ " .. msg
-            statusLbl.TextColor3 = T.error
-            gameWrap.Visible = false
-            tween(keyBox:FindFirstChildOfClass("UIStroke") :: any, {Color=T.error}, 0.15)
-            notify("Keys salah", msg, false)
+            -- kalau sudah redeemed by you, check aja masih valid?
+            local ok, msg = checkPremiumKey(key)
+            if ok and string.find(msgR, "already redeemed") then
+                premiumUnlocked = true
+                statusLbl.Text = "✓ " .. msg
+                statusLbl.TextColor3 = T.success
+                gameWrap.Visible = true
+                checkBtn.Text = "Valid ✓"
+                notify("Keys valid", "welcome back", true)
+            else
+                premiumUnlocked = false
+                statusLbl.Text = "✗ " .. msgR
+                statusLbl.TextColor3 = T.error
+                gameWrap.Visible = false
+                tween(keyBox:FindFirstChildOfClass("UIStroke") :: any, {Color=T.error}, 0.15)
+                notify("Keys salah", msgR, false)
+            end
         end
     end)
 
     loadBtn.MouseButton1Click:Connect(function()
         if not premiumUnlocked then notify("Keys belum valid", "check keys dulu", false); return end
         if not selectedGamePremium then notify("Pilih game dulu", "klik salah satu game premium", false); return end
+        -- double-check masih valid sebelum load (anti time warp)
+        local ok, msg = checkPremiumKey(keyBox.Text)
+        if not ok then notify("Key expired", msg, false); return end
         notify("Loading Premium", selectedGamePremium .. " ...", true)
         sg:Destroy()
         loadGameScript(selectedGamePremium, "Premium")
