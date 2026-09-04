@@ -80,6 +80,41 @@ local function gradient(p: Instance, c1: Color3, c2: Color3, rot: number?)
     g.Color = ColorSequence.new(c1,c2); g.Rotation = rot or 90; g.Parent=p; return g
 end
 
+local function gradient3(p: Instance, c1: Color3, c2: Color3, c3: Color3, rot: number?)
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, c1),
+        ColorSequenceKeypoint.new(0.5, c2),
+        ColorSequenceKeypoint.new(1, c3),
+    })
+    g.Rotation = rot or 90
+    g.Parent = p
+    return g
+end
+
+local function ripple(btn: GuiObject, color: Color3?)
+    local c = color or Color3.new(1,1,1)
+    btn.ClipsDescendants = true
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        local r = Instance.new("Frame")
+        r.BackgroundColor3 = c
+        r.BackgroundTransparency = 0.7
+        r.AnchorPoint = Vector2.new(0.5, 0.5)
+        r.Position = UDim2.fromOffset(input.Position.X - btn.AbsolutePosition.X, input.Position.Y - btn.AbsolutePosition.Y)
+        r.Size = UDim2.fromOffset(0, 0)
+        r.ZIndex = btn.ZIndex + 1
+        r.Parent = btn
+        corner(r, UDim.new(1, 0))
+        local tw = TweenService:Create(r, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.fromOffset(300, 300),
+            BackgroundTransparency = 1,
+        })
+        tw:Play()
+        tw.Completed:Connect(function() r:Destroy() end)
+    end)
+end
+
 -- supabase: cek & redeem key (bind ke roblox UserId) — anti bobol via RPC
 local function checkPremiumKey(key: string): (boolean, string)
     return checkKeyViaRpc(key)
@@ -217,57 +252,149 @@ corner(main, UDim.new(0,16))
 stroke(main, T.border, 1.5, 0.15)
 main.ClipsDescendants = true
 
--- light biru tipis di dalam sudut (tidak nutupin isi, ZIndex rendah + transparan)
-for _, pos in ipairs({
-    UDim2.fromOffset(6,6),
-    UDim2.new(1,-26,0,6),
-    UDim2.fromOffset(6,398),
-    UDim2.new(1,-26,1,-26),
-}) do
-    local glow = Instance.new("Frame")
-    glow.BackgroundColor3 = T.primary
-    glow.BackgroundTransparency = 0.88
-    glow.Size = UDim2.fromOffset(20,20)
-    glow.Position = pos
-    glow.ZIndex = 1
-    glow.BorderSizePixel = 0
-    glow.Parent = main
-    corner(glow, UDim.new(1,0))
-    local g = Instance.new("UIGradient")
-    g.Color = ColorSequence.new(ColorSequenceKeypoint.new(0, T.primary), ColorSequenceKeypoint.new(1, T.accent))
-    g.Rotation = 45
-    g.Parent = glow
-    local dot = Instance.new("Frame")
-    dot.BackgroundColor3 = Color3.new(1,1,1)
-    dot.BackgroundTransparency = 0.85
-    dot.Size = UDim2.fromOffset(4,4)
-    dot.Position = UDim2.fromScale(0.5,0.5)
-    dot.AnchorPoint = Vector2.new(0.5,0.5)
-    dot.Parent = glow
-    corner(dot, UDim.new(1,0))
+-- wave layer samar di belakang (biar gak flat)
+do
+    local wave = Instance.new("Frame")
+    wave.Name = "WaveFX"
+    wave.BackgroundColor3 = T.primary
+    wave.BackgroundTransparency = 0.92
+    wave.Size = UDim2.fromScale(1, 1)
+    wave.BorderSizePixel = 0
+    wave.ZIndex = 1
+    wave.Parent = main
+    local wc = Instance.new("UICorner")
+    wc.CornerRadius = UDim.new(0, 16)
+    wc.Parent = wave
+    local wg = Instance.new("UIGradient")
+    wg.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, T.primary),
+        ColorSequenceKeypoint.new(0.5, T.secondary),
+        ColorSequenceKeypoint.new(1, T.primaryDark),
+    })
+    wg.Rotation = 18
+    wg.Offset = Vector2.new(-0.2, 0)
+    wg.Parent = wave
+    task.spawn(function()
+        local dir = 1
+        while wg.Parent do
+            local target = if dir == 1 then Vector2.new(0.2, 0) else Vector2.new(-0.2, 0)
+            local tw = TweenService:Create(wg, TweenInfo.new(5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { Offset = target })
+            tw:Play()
+            tw.Completed:Wait()
+            if not wg.Parent then break end
+            dir *= -1
+        end
+    end)
 end
 
--- shadow
+-- floating particles (6 bubble kecil naik pelan)
+task.spawn(function()
+    for i = 1, 6 do
+        local sz = math.random(3, 6)
+        local b = Instance.new("Frame")
+        b.BackgroundColor3 = Color3.fromRGB(180, 220, 255)
+        b.BackgroundTransparency = 0.65
+        b.Size = UDim2.fromOffset(sz, sz)
+        b.Position = UDim2.new(math.random() * 0.9 + 0.05, 0, 1, math.random(-10, 10))
+        b.BorderSizePixel = 0
+        b.ZIndex = 1
+        b.Parent = main
+        corner(b, UDim.new(1, 0))
+        local st = Instance.new("UIStroke")
+        st.Color = T.accent
+        st.Thickness = 1
+        st.Transparency = 0.6
+        st.Parent = b
+        local function float()
+            if not b.Parent then return end
+            local sx = math.random() * 0.8 + 0.1
+            b.Position = UDim2.new(sx, 0, 1, 6)
+            local ex = sx + (math.random() - 0.5) * 0.08
+            local dur = math.random(5, 9)
+            TweenService:Create(b, TweenInfo.new(dur, Enum.EasingStyle.Linear), {
+                Position = UDim2.new(ex, 0, 0, -6)
+            }):Play()
+            task.wait(dur)
+            if b.Parent then
+                task.wait(math.random() * 1.2)
+                float()
+            end
+        end
+        task.delay(math.random() * 2.5, float)
+    end
+end)
+
+-- shadow (2 lapis biar lebih deep)
 do
     local s = Instance.new("Frame")
     s.BackgroundColor3 = Color3.new(0,0,0)
-    s.BackgroundTransparency = 0.78
-    s.Size = UDim2.new(1,14,1,14); s.Position = UDim2.fromOffset(-7,-7)
+    s.BackgroundTransparency = 0.80
+    s.Size = UDim2.new(1,18,1,18); s.Position = UDim2.fromOffset(-9,-9)
     s.BorderSizePixel=0; s.ZIndex=0; s.Parent=main
-    corner(s, UDim.new(0,18))
+    corner(s, UDim.new(0,20))
+    local s2 = Instance.new("Frame")
+    s2.BackgroundColor3 = T.primary
+    s2.BackgroundTransparency = 0.93
+    s2.Size = UDim2.new(1,30,1,30); s2.Position = UDim2.fromOffset(-15,-15)
+    s2.BorderSizePixel=0; s2.ZIndex=-1; s2.Parent=main
+    corner(s2, UDim.new(0,24))
     main.ZIndex=2
 end
 
--- accent bar
+-- accent bar 3-warna + shimmer
 do
     local bar = Instance.new("Frame")
     bar.BackgroundColor3 = T.primary; bar.Size=UDim2.new(1,0,0,3)
     bar.BorderSizePixel=0; bar.ZIndex=5; bar.Parent=main
     corner(bar, UDim.new(0,99))
-    local g = Instance.new("UIGradient")
-    g.Color = ColorSequence.new(T.primary, T.gold); g.Rotation=0; g.Parent=bar
+    gradient3(bar, T.primary, T.secondary, T.gold, 0)
     local c = bar:FindFirstChildOfClass("UICorner") :: any
     if c then c.CornerRadius=UDim.new(0,16) end
+    -- shimmer
+    local sf = Instance.new("Frame")
+    sf.BackgroundColor3 = Color3.new(1,1,1)
+    sf.BackgroundTransparency = 1
+    sf.Size = UDim2.fromScale(1,1)
+    sf.BorderSizePixel = 0
+    sf.ZIndex = 6
+    sf.Parent = bar
+    local sc = Instance.new("UICorner")
+    sc.CornerRadius = UDim.new(0,99)
+    sc.Parent = sf
+    local sg2 = Instance.new("UIGradient")
+    sg2.Color = ColorSequence.new(Color3.new(1,1,1))
+    sg2.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.45, 0.4),
+        NumberSequenceKeypoint.new(0.5, 0),
+        NumberSequenceKeypoint.new(0.55, 0.4),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    sg2.Offset = Vector2.new(-1, 0)
+    sg2.Rotation = 10
+    sg2.Parent = sf
+    task.spawn(function()
+        while sg2.Parent do
+            local tw = TweenService:Create(sg2, TweenInfo.new(2.2, Enum.EasingStyle.Linear), { Offset = Vector2.new(1, 0) })
+            tw:Play()
+            tw.Completed:Wait()
+            if not sg2.Parent then break end
+            sg2.Offset = Vector2.new(-1, 0)
+            task.wait(1.5)
+        end
+    end)
+end
+
+-- inner highlight glass atas
+do
+    local hl = Instance.new("Frame")
+    hl.BackgroundColor3 = Color3.new(1,1,1)
+    hl.BackgroundTransparency = 0.94
+    hl.Size = UDim2.new(1, -2, 0, 1)
+    hl.Position = UDim2.fromOffset(1, 1)
+    hl.BorderSizePixel = 0
+    hl.ZIndex = 5
+    hl.Parent = main
 end
 
 -- title bar
@@ -306,6 +433,14 @@ corner(closeBtn, UDim.new(0,8)); stroke(closeBtn, T.border, 1, 0.5)
 closeBtn.MouseButton1Click:Connect(function()
     tween(main, {BackgroundTransparency=1}, 0.18)
     task.wait(0.18); sg:Destroy()
+end)
+closeBtn.MouseEnter:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.12), { BackgroundColor3 = T.error }):Play()
+    TweenService:Create(closeBtn, TweenInfo.new(0.12), { TextColor3 = Color3.new(1,1,1) }):Play()
+end)
+closeBtn.MouseLeave:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.12), { BackgroundColor3 = T.surface2 }):Play()
+    TweenService:Create(closeBtn, TweenInfo.new(0.12), { TextColor3 = T.dim }):Play()
 end)
 
 -- tab bar (3 tabs)
@@ -376,13 +511,54 @@ local function getScroll(page: Frame): ScrollingFrame
     return page:FindFirstChild("Scroll") :: ScrollingFrame
 end
 
+local currentTab = "Premium"
+
 local function switchTab(name: string)
-    for k, f in pairs(pages) do f.Visible = (k==name) end
+    if name == currentTab then return end
+
+    -- slide out old page
+    local oldPage = pages[currentTab]
+    if oldPage and oldPage.Visible then
+        local oldSc = oldPage:FindFirstChild("Scroll") :: ScrollingFrame
+        if oldSc then
+            TweenService:Create(oldSc, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Position = UDim2.new(0, -18, 0, 0)
+            }):Play()
+        end
+        task.delay(0.12, function()
+            oldPage.Visible = false
+            if oldSc then oldSc.Position = UDim2.fromOffset(0, 0) end
+        end)
+    end
+
+    -- slide in new page
+    local newPage = pages[name]
+    if newPage then
+        local newSc = newPage:FindFirstChild("Scroll") :: ScrollingFrame
+        if newSc then newSc.Position = UDim2.new(0, 18, 0, 0) end
+        newPage.Visible = true
+        if newSc then
+            newSc.CanvasPosition = Vector2.new(0, 0)
+            TweenService:Create(newSc, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.fromOffset(0, 0)
+            }):Play()
+        end
+    end
+
+    currentTab = name
+
     for k, b in pairs(tabBtns) do
-        b.BackgroundColor3 = if k==name then T.primary else T.surface2
-        b.TextColor3 = if k==name then Color3.new(1,1,1) else T.dim
+        local isActive = k == name
+        TweenService:Create(b, TweenInfo.new(0.18), {
+            BackgroundColor3 = if isActive then T.primary else T.surface2,
+            TextColor3 = if isActive then Color3.new(1,1,1) else T.dim,
+        }):Play()
         local st = b:FindFirstChildOfClass("UIStroke") :: any
-        if st then st.Color = if k==name then T.primary else T.border end
+        if st then
+            TweenService:Create(st, TweenInfo.new(0.18), {
+                Color = if isActive then T.primary else T.border,
+            }):Play()
+        end
     end
 end
 
@@ -398,6 +574,17 @@ for _, info in ipairs({
     b.Text=info.label; b.AutoButtonColor=false; b.Parent=tabBar
     corner(b, UDim.new(0,8)); stroke(b, T.border, 1, 0.5)
     tabBtns[info.key]=b
+    ripple(b, Color3.new(1,1,1))
+    b.MouseEnter:Connect(function()
+        if currentTab ~= info.key then
+            TweenService:Create(b, TweenInfo.new(0.12), { BackgroundColor3 = T.surfaceHover }):Play()
+        end
+    end)
+    b.MouseLeave:Connect(function()
+        if currentTab ~= info.key then
+            TweenService:Create(b, TweenInfo.new(0.12), { BackgroundColor3 = T.surface2 }):Play()
+        end
+    end)
     b.MouseButton1Click:Connect(function() switchTab(info.key) end)
 end
 
@@ -435,6 +622,7 @@ do
     checkBtn.Text="Check"; checkBtn.AutoButtonColor=false; checkBtn.Parent=card
     corner(checkBtn, UDim.new(0,8))
     local g = Instance.new("UIGradient"); g.Color=ColorSequence.new(T.primary, T.primaryDark); g.Rotation=90; g.Parent=checkBtn
+    ripple(checkBtn, Color3.new(1,1,1))
 
     -- status
     local statusLbl = Instance.new("TextLabel")
@@ -467,8 +655,19 @@ do
         b.Name=gname; b.BackgroundColor3=T.surface; b.Font=Enum.Font.Gotham; b.TextSize=11
         b.TextColor3=T.dim; b.Text=gname; b.AutoButtonColor=false; b.Parent=gameGrid
         corner(b, UDim.new(0,8)); stroke(b, T.border, 1, 0.35)
-        b.MouseEnter:Connect(function() if selectedGamePremium~=gname then tween(b,{BackgroundColor3=T.surfaceHover},0.12) end end)
-        b.MouseLeave:Connect(function() if selectedGamePremium~=gname then tween(b,{BackgroundColor3=T.surface},0.12) end end)
+        ripple(b, T.primary)
+        b.MouseEnter:Connect(function()
+            if selectedGamePremium~=gname then
+                TweenService:Create(b, TweenInfo.new(0.12), { BackgroundColor3 = T.surfaceHover }):Play()
+                TweenService:Create(b:FindFirstChildOfClass("UIStroke") :: any, TweenInfo.new(0.12), { Color = T.secondary }):Play()
+            end
+        end)
+        b.MouseLeave:Connect(function()
+            if selectedGamePremium~=gname then
+                TweenService:Create(b, TweenInfo.new(0.12), { BackgroundColor3 = T.surface }):Play()
+                TweenService:Create(b:FindFirstChildOfClass("UIStroke") :: any, TweenInfo.new(0.12), { Color = T.border }):Play()
+            end
+        end)
         b.MouseButton1Click:Connect(function()
             selectedGamePremium=gname
             for n, btn in pairs(gameButtons) do
@@ -484,6 +683,37 @@ do
     loadBtn.TextColor3=Color3.new(1,1,1); loadBtn.Text="Load Premium Script  ▶"; loadBtn.AutoButtonColor=false; loadBtn.Parent=gameWrap
     corner(loadBtn, UDim.new(0,8))
     local lg = Instance.new("UIGradient"); lg.Color=ColorSequence.new(T.primary, T.secondary); lg.Rotation=0; lg.Parent=loadBtn
+    ripple(loadBtn, Color3.new(1,1,1))
+    -- shimmer
+    do
+        local sf = Instance.new("Frame")
+        sf.BackgroundColor3 = Color3.new(1,1,1)
+        sf.BackgroundTransparency = 1
+        sf.Size = UDim2.fromScale(1,1)
+        sf.BorderSizePixel = 0
+        sf.ZIndex = loadBtn.ZIndex + 1
+        sf.Parent = loadBtn
+        local sc = Instance.new("UICorner")
+        sc.CornerRadius = UDim.new(0,8)
+        sc.Parent = sf
+        local sg3 = Instance.new("UIGradient")
+        sg3.Color = ColorSequence.new(Color3.new(1,1,1))
+        sg3.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.45, 0.5),
+            NumberSequenceKeypoint.new(0.5, 0),
+            NumberSequenceKeypoint.new(0.55, 0.5),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        sg3.Offset = Vector2.new(-1, 0)
+        sg3.Parent = sf
+        task.spawn(function()
+            while sg3.Parent do
+                TweenService:Create(sg3, TweenInfo.new(1.8, Enum.EasingStyle.Linear), { Offset = Vector2.new(1, 0) }):Play()
+                task.wait(2.5)
+            end
+        end)
+    end
 
     checkBtn.MouseButton1Click:Connect(function()
         local key = keyBox.Text
@@ -559,6 +789,7 @@ do
     confirmBtn.Font=Enum.Font.GothamBold; confirmBtn.TextSize=11; confirmBtn.TextColor3=T.dim
     confirmBtn.Text="Confirm"; confirmBtn.AutoButtonColor=false; confirmBtn.Parent=card
     corner(confirmBtn, UDim.new(0,8)); stroke(confirmBtn, T.border, 1, 0.4)
+    ripple(confirmBtn, Color3.new(1,1,1))
 
     local gameWrapFree = Instance.new("Frame")
     gameWrapFree.BackgroundTransparency=1; gameWrapFree.Size=UDim2.new(1,0,0,0); gameWrapFree.AutomaticSize=Enum.AutomaticSize.Y
@@ -599,6 +830,7 @@ do
     loadFree.TextColor3=Color3.new(1,1,1); loadFree.Text="Load Free Script  ▶"; loadFree.AutoButtonColor=false; loadFree.Parent=gameWrapFree
     corner(loadFree, UDim.new(0,8))
     local lg2 = Instance.new("UIGradient"); lg2.Color=ColorSequence.new(T.primary, T.secondary); lg2.Rotation=0; lg2.Parent=loadFree
+    ripple(loadFree, Color3.new(1,1,1))
 
     confirmBtn.MouseButton1Click:Connect(function()
         confirmedFree = not confirmedFree
@@ -648,6 +880,7 @@ do
     discordBtn.BackgroundColor3=T.primary; discordBtn.Size=UDim2.new(1,0,0,30); discordBtn.Font=Enum.Font.GothamBold; discordBtn.TextSize=11
     discordBtn.TextColor3=Color3.new(1,1,1); discordBtn.Text="Copy Discord Invite"; discordBtn.AutoButtonColor=false; discordBtn.Parent=sc
     corner(discordBtn, UDim.new(0,8))
+    ripple(discordBtn, Color3.new(1,1,1))
     discordBtn.MouseButton1Click:Connect(function()
         if setclipboard then setclipboard("https://discord.gg/animula") end
         notify("Copied", "discord invite ke clipboard", true)
@@ -679,11 +912,25 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- entrance
-main.Size = UDim2.fromOffset(540, 400)
-tween(main, {Size=UDim2.fromOffset(560,420)}, 0.32, Enum.EasingStyle.Back)
-main.BackgroundTransparency=0.15
-tween(main, {BackgroundTransparency=0}, 0.22)
+-- entrance (scale + fade, biar pop)
+main.BackgroundTransparency = 1
+main.Size = UDim2.fromOffset(530, 390)
+-- stagger: semua child mulai transparan lalu fade in
+for _, ch in ipairs(main:GetChildren()) do
+    if ch:IsA("Frame") or ch:IsA("TextButton") or ch:IsA("TextLabel") then
+        ch.BackgroundTransparency = 1
+    end
+end
+tween(main, { Size = UDim2.fromOffset(560, 420), BackgroundTransparency = 0 }, 0.35, Enum.EasingStyle.Back)
+task.wait(0.1)
+-- fade in children
+for i, ch in ipairs(main:GetChildren()) do
+    task.delay(i * 0.02, function()
+        if ch:IsA("Frame") and ch.Name ~= "WaveFX" and ch.Name ~= "Shadow" and ch.Name ~= "Shadow2" then
+            tween(ch, { BackgroundTransparency = 0 }, 0.2)
+        end
+    end)
+end
 
 -- default tab
 switchTab("Premium")
