@@ -311,7 +311,7 @@ sg.Parent = hui
 
 local main = Instance.new("Frame")
 main.Name = "Main"
-main.Size = UDim2.fromOffset(660, 455)
+main.Size = UDim2.fromOffset(600, 430)
 main.Position = UDim2.fromScale(0.5, 0.5)
 main.AnchorPoint = Vector2.new(0.5, 0.5)
 main.BackgroundColor3 = T.surface
@@ -356,43 +356,7 @@ do
 	end)
 end
 
--- bubbles (6)
-task.spawn(function()
-	for i = 1, 6 do
-		local sz = math.random(3, 6)
-		local b = Instance.new("Frame")
-		b.BackgroundColor3 = Color3.fromRGB(180, 220, 255)
-		b.BackgroundTransparency = 0.7
-		b.Size = UDim2.fromOffset(sz, sz)
-		b.Position = UDim2.new(math.random() * 0.9 + 0.05, 0, 1, math.random(-10, 10))
-		b.BorderSizePixel = 0
-		b.ZIndex = 1
-		b.Parent = main
-		corner(b, UDim.new(1, 0))
-		local st = Instance.new("UIStroke")
-		st.Color = T.accent
-		st.Thickness = 1
-		st.Transparency = 0.6
-		st.Parent = b
-		local function float()
-			if not b.Parent then return end
-			local sx = math.random() * 0.8 + 0.1
-			b.Position = UDim2.new(sx, 0, 1, 6)
-			local ex = sx + (math.random() - 0.5) * 0.08
-			local dur = math.random(5, 9)
-			local tw = TweenService:Create(b, TweenInfo.new(dur, Enum.EasingStyle.Linear), {
-				Position = UDim2.new(ex, 0, 0, -6),
-			})
-			tw:Play()
-			tw.Completed:Wait()
-			if b.Parent then
-				task.wait(math.random() * 1.2)
-				float()
-			end
-		end
-		task.delay(math.random() * 2.5, float)
-	end
-end)
+-- Konten sengaja dibiarkan bersih agar fokus tetap pada navigasi dan informasi.
 
 -- shadow 2 lapis
 do
@@ -448,7 +412,7 @@ end
 local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
 titleBar.BackgroundTransparency = 1
-titleBar.Size = UDim2.new(1, 0, 0, 56)
+titleBar.Size = UDim2.new(1, 0, 0, 62)
 titleBar.Position = UDim2.fromOffset(0, 4)
 titleBar.ZIndex = 9
 titleBar.Parent = main
@@ -456,8 +420,8 @@ titleBar.Parent = main
 -- icon + glow pulse
 local iconWrap = Instance.new("Frame")
 iconWrap.BackgroundColor3 = T.primary
-iconWrap.Size = UDim2.fromOffset(38, 38)
-iconWrap.Position = UDim2.fromOffset(14, 9)
+iconWrap.Size = UDim2.fromOffset(42, 42)
+iconWrap.Position = UDim2.fromOffset(16, 10)
 iconWrap.ZIndex = 10
 iconWrap.BorderSizePixel = 0
 iconWrap.Parent = titleBar
@@ -490,7 +454,7 @@ local iconLbl = Instance.new("TextLabel")
 iconLbl.BackgroundTransparency = 1
 iconLbl.Size = UDim2.fromScale(1, 1)
 iconLbl.Font = Enum.Font.GothamBold
-iconLbl.TextSize = 19
+iconLbl.TextSize = 21
 iconLbl.TextColor3 = Color3.new(1, 1, 1)
 iconLbl.Text = "◈"
 iconLbl.ZIndex = 11
@@ -498,10 +462,10 @@ iconLbl.Parent = iconWrap
 
 local titleLbl = Instance.new("TextLabel")
 titleLbl.BackgroundTransparency = 1
-titleLbl.Position = UDim2.fromOffset(60, 8)
-titleLbl.Size = UDim2.new(1, -160, 0, 20)
+titleLbl.Position = UDim2.fromOffset(68, 9)
+titleLbl.Size = UDim2.new(1, -180, 0, 23)
 titleLbl.Font = Enum.Font.GothamBold
-titleLbl.TextSize = 17
+titleLbl.TextSize = 20
 titleLbl.TextColor3 = T.text
 titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
@@ -511,10 +475,10 @@ titleLbl.Parent = titleBar
 
 local subLbl = Instance.new("TextLabel")
 subLbl.BackgroundTransparency = 1
-subLbl.Position = UDim2.fromOffset(60, 30)
-subLbl.Size = UDim2.new(1, -160, 0, 14)
+subLbl.Position = UDim2.fromOffset(68, 34)
+subLbl.Size = UDim2.new(1, -180, 0, 16)
 subLbl.Font = Enum.Font.Gotham
-subLbl.TextSize = 11
+subLbl.TextSize = 12
 subLbl.TextColor3 = T.dim
 subLbl.TextXAlignment = Enum.TextXAlignment.Left
 subLbl.Text = "v3  •  Premium / Free / Info"
@@ -524,8 +488,8 @@ subLbl.Parent = titleBar
 -- status pill kanan (ONLINE)
 local pill = Instance.new("Frame")
 pill.BackgroundColor3 = Color3.fromRGB(16, 42, 30)
-pill.Size = UDim2.fromOffset(76, 24)
-pill.Position = UDim2.new(1, -118, 0, 14)
+pill.Size = UDim2.fromOffset(84, 26)
+pill.Position = UDim2.new(1, -126, 0, 17)
 pill.ZIndex = 10
 pill.BorderSizePixel = 0
 pill.Parent = titleBar
@@ -543,7 +507,7 @@ pillTxt.BackgroundTransparency = 1
 pillTxt.Position = UDim2.fromOffset(20, 0)
 pillTxt.Size = UDim2.new(1, -24, 1, 0)
 pillTxt.Font = Enum.Font.GothamBold
-pillTxt.TextSize = 10
+pillTxt.TextSize = 11
 pillTxt.TextColor3 = T.success
 pillTxt.TextXAlignment = Enum.TextXAlignment.Left
 pillTxt.Text = "ONLINE"
@@ -558,10 +522,10 @@ end)
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.BackgroundColor3 = T.surface2
-closeBtn.Size = UDim2.fromOffset(28, 28)
-closeBtn.Position = UDim2.new(1, -36, 0, 12)
+closeBtn.Size = UDim2.fromOffset(30, 30)
+closeBtn.Position = UDim2.new(1, -38, 0, 15)
 closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 14
+closeBtn.TextSize = 16
 closeBtn.TextColor3 = T.dim
 closeBtn.Text = "×"
 closeBtn.AutoButtonColor = false
@@ -589,8 +553,8 @@ local tabBar = Instance.new("Frame")
 tabBar.Name = "TabBar"
 tabBar.BackgroundColor3 = T.bg
 tabBar.BackgroundTransparency = 0.18
-tabBar.Size = UDim2.new(0, 150, 1, -78)
-tabBar.Position = UDim2.fromOffset(10, 62)
+tabBar.Size = UDim2.new(0, 145, 1, -86)
+tabBar.Position = UDim2.fromOffset(10, 68)
 tabBar.BorderSizePixel = 0
 tabBar.ZIndex = 9
 tabBar.Parent = main
@@ -611,8 +575,8 @@ local currentTab = "Premium"
 local body = Instance.new("Frame")
 body.Name = "Body"
 body.BackgroundTransparency = 1
-body.Size = UDim2.new(1, -180, 1, -74)
-body.Position = UDim2.fromOffset(170, 62)
+body.Size = UDim2.new(1, -170, 1, -82)
+body.Position = UDim2.fromOffset(160, 68)
 body.ZIndex = 5
 body.Parent = main
 
@@ -631,7 +595,7 @@ local function notify(title: string, desc: string, ok: boolean?)
 	a.BackgroundTransparency = 1
 	a.Size = UDim2.new(1, 0, 0, 16)
 	a.Font = Enum.Font.GothamBold
-	a.TextSize = 12
+	a.TextSize = 14
 	a.TextColor3 = if ok == false then T.error else T.text
 	a.TextXAlignment = Enum.TextXAlignment.Left
 	a.Text = title
@@ -641,7 +605,7 @@ local function notify(title: string, desc: string, ok: boolean?)
 	b.Position = UDim2.fromOffset(0, 17)
 	b.Size = UDim2.new(1, 0, 0, 14)
 	b.Font = Enum.Font.Gotham
-	b.TextSize = 11
+	b.TextSize = 12
 	b.TextColor3 = T.dim
 	b.TextXAlignment = Enum.TextXAlignment.Left
 	b.TextWrapped = true
@@ -755,7 +719,7 @@ for _, info in ipairs({
 	b.Size = UDim2.new(1, 0, 0, 38)
 	b.TextXAlignment = Enum.TextXAlignment.Left
 	b.Font = Enum.Font.GothamSemibold
-	b.TextSize = 12
+	b.TextSize = 14
 	b.TextColor3 = if info.key == currentTab then Color3.new(1, 1, 1) else T.dim
 	b.Text = info.label
 	b.AutoButtonColor = false
@@ -787,7 +751,7 @@ local function sectionTitle(parent: Instance, text: string)
 	l.BackgroundTransparency = 1
 	l.Size = UDim2.new(1, 0, 0, 18)
 	l.Font = Enum.Font.GothamBold
-	l.TextSize = 11
+	l.TextSize = 13
 	l.TextColor3 = T.accent
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.Text = string.upper(text)
@@ -803,7 +767,7 @@ local function gameGrid(parent: Instance, games: { string }, selected: { value: 
 	grid.AutomaticSize = Enum.AutomaticSize.Y
 	grid.Parent = parent
 	local layout = Instance.new("UIGridLayout")
-	layout.CellSize = UDim2.fromOffset(141, 31)
+	layout.CellSize = UDim2.fromOffset(132, 36)
 	layout.CellPadding = UDim2.fromOffset(6, 6)
 	layout.FillDirectionMaxCells = 3
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -814,7 +778,7 @@ local function gameGrid(parent: Instance, games: { string }, selected: { value: 
 		b.Name = gname
 		b.BackgroundColor3 = T.surface
 		b.Font = Enum.Font.Gotham
-		b.TextSize = 11
+		b.TextSize = 13
 		b.TextColor3 = T.dim
 		b.TextTruncate = Enum.TextTruncate.AtEnd
 		b.Text = gname
@@ -858,9 +822,9 @@ end
 local function primaryButton(parent: Instance, text: string): TextButton
 	local btn = Instance.new("TextButton")
 	btn.BackgroundColor3 = T.primary
-	btn.Size = UDim2.new(1, 0, 0, 34)
+	btn.Size = UDim2.new(1, 0, 0, 40)
 	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 12
+	btn.TextSize = 14
 	btn.TextColor3 = Color3.new(1, 1, 1)
 	btn.Text = text
 	btn.AutoButtonColor = false
@@ -874,8 +838,8 @@ local function primaryButton(parent: Instance, text: string): TextButton
 	shimmerLoop(btn, UDim.new(0, 9), 2.2)
 	btn.MouseEnter:Connect(function() tween(btn, { BackgroundColor3 = Color3.fromRGB(96, 176, 255) }, 0.12) end)
 	btn.MouseLeave:Connect(function() tween(btn, { BackgroundColor3 = T.primary }, 0.12) end)
-	btn.MouseButton1Down:Connect(function() tween(btn, { Size = UDim2.new(1, -2, 0, 32) }, 0.07) end)
-	btn.MouseButton1Up:Connect(function() tween(btn, { Size = UDim2.new(1, 0, 0, 34) }, 0.1, Enum.EasingStyle.Back) end)
+	btn.MouseButton1Down:Connect(function() tween(btn, { Size = UDim2.new(1, -2, 0, 38) }, 0.07) end)
+	btn.MouseButton1Up:Connect(function() tween(btn, { Size = UDim2.new(1, 0, 0, 40) }, 0.1, Enum.EasingStyle.Back) end)
 	return btn
 end
 
@@ -896,7 +860,7 @@ do
 
 	local card = Instance.new("Frame")
 	card.BackgroundColor3 = T.surface2
-	card.Size = UDim2.new(1, 0, 0, 96)
+	card.Size = UDim2.new(1, 0, 0, 106)
 	card.BorderSizePixel = 0
 	card.ZIndex = 6
 	card.Parent = sc
@@ -909,7 +873,7 @@ do
 	l1.BackgroundTransparency = 1
 	l1.Size = UDim2.new(1, 0, 0, 15)
 	l1.Font = Enum.Font.GothamBold
-	l1.TextSize = 13
+	l1.TextSize = 15
 	l1.TextColor3 = T.text
 	l1.TextXAlignment = Enum.TextXAlignment.Left
 	l1.Text = "Premium Keys"
@@ -917,10 +881,10 @@ do
 
 	local l2 = Instance.new("TextLabel")
 	l2.BackgroundTransparency = 1
-	l2.Position = UDim2.fromOffset(0, 17)
-	l2.Size = UDim2.new(1, 0, 0, 12)
+	l2.Position = UDim2.fromOffset(0, 20)
+	l2.Size = UDim2.new(1, 0, 0, 14)
 	l2.Font = Enum.Font.Gotham
-	l2.TextSize = 10
+	l2.TextSize = 12
 	l2.TextColor3 = T.muted
 	l2.TextXAlignment = Enum.TextXAlignment.Left
 	l2.Text = "masukin key, otomatis cek ke supabase + bind roblox id"
@@ -928,10 +892,10 @@ do
 
 	local keyBox = Instance.new("TextBox")
 	keyBox.BackgroundColor3 = T.bg
-	keyBox.Size = UDim2.new(1, -92, 0, 30)
-	keyBox.Position = UDim2.fromOffset(0, 36)
+	keyBox.Size = UDim2.new(1, -100, 0, 34)
+	keyBox.Position = UDim2.fromOffset(0, 43)
 	keyBox.Font = Enum.Font.Gotham
-	keyBox.TextSize = 12
+	keyBox.TextSize = 13
 	keyBox.TextColor3 = T.text
 	keyBox.PlaceholderText = "Animula-pk-XXXXX / Animula-fk-XXXXX"
 	keyBox.PlaceholderColor3 = T.muted
@@ -949,10 +913,10 @@ do
 
 	local checkBtn = Instance.new("TextButton")
 	checkBtn.BackgroundColor3 = T.primary
-	checkBtn.Size = UDim2.fromOffset(84, 30)
-	checkBtn.Position = UDim2.new(1, -84, 0, 36)
+	checkBtn.Size = UDim2.fromOffset(92, 34)
+	checkBtn.Position = UDim2.new(1, -92, 0, 43)
 	checkBtn.Font = Enum.Font.GothamBold
-	checkBtn.TextSize = 11
+	checkBtn.TextSize = 12
 	checkBtn.TextColor3 = Color3.new(1, 1, 1)
 	checkBtn.Text = "Check ✓"
 	checkBtn.AutoButtonColor = false
@@ -970,10 +934,10 @@ do
 
 	local hint = Instance.new("TextLabel")
 	hint.BackgroundTransparency = 1
-	hint.Position = UDim2.fromOffset(0, 70)
-	hint.Size = UDim2.new(1, 0, 0, 12)
+	hint.Position = UDim2.fromOffset(0, 83)
+	hint.Size = UDim2.new(1, 0, 0, 14)
 	hint.Font = Enum.Font.Gotham
-	hint.TextSize = 10
+	hint.TextSize = 11
 	hint.TextColor3 = T.muted
 	hint.TextXAlignment = Enum.TextXAlignment.Left
 	hint.Text = "dapatkan key di web /generetekey (fk) atau beli (pk)"
@@ -983,7 +947,7 @@ do
 	statusLbl.BackgroundTransparency = 1
 	statusLbl.Size = UDim2.new(1, 0, 0, 15)
 	statusLbl.Font = Enum.Font.Gotham
-	statusLbl.TextSize = 11
+	statusLbl.TextSize = 12
 	statusLbl.TextColor3 = T.dim
 	statusLbl.TextXAlignment = Enum.TextXAlignment.Left
 	statusLbl.Text = ""
@@ -1073,7 +1037,7 @@ do
 
 	local card = Instance.new("Frame")
 	card.BackgroundColor3 = T.surface2
-	card.Size = UDim2.new(1, 0, 0, 58)
+	card.Size = UDim2.new(1, 0, 0, 68)
 	card.BorderSizePixel = 0
 	card.ZIndex = 6
 	card.Parent = sc
@@ -1086,7 +1050,7 @@ do
 	t1.BackgroundTransparency = 1
 	t1.Size = UDim2.new(1, -96, 0, 15)
 	t1.Font = Enum.Font.GothamBold
-	t1.TextSize = 13
+	t1.TextSize = 15
 	t1.TextColor3 = T.text
 	t1.TextXAlignment = Enum.TextXAlignment.Left
 	t1.Text = "Free Hub"
@@ -1094,10 +1058,10 @@ do
 
 	local t2 = Instance.new("TextLabel")
 	t2.BackgroundTransparency = 1
-	t2.Position = UDim2.fromOffset(0, 17)
-	t2.Size = UDim2.new(1, -96, 0, 12)
+	t2.Position = UDim2.fromOffset(0, 21)
+	t2.Size = UDim2.new(1, -104, 0, 14)
 	t2.Font = Enum.Font.Gotham
-	t2.TextSize = 10
+	t2.TextSize = 12
 	t2.TextColor3 = T.muted
 	t2.TextXAlignment = Enum.TextXAlignment.Left
 	t2.Text = "langsung confirm, gak perlu keys"
@@ -1105,10 +1069,10 @@ do
 
 	local confirmBtn = Instance.new("TextButton")
 	confirmBtn.BackgroundColor3 = T.surface
-	confirmBtn.Size = UDim2.fromOffset(86, 30)
-	confirmBtn.Position = UDim2.new(1, -86, 0.5, -15)
+	confirmBtn.Size = UDim2.fromOffset(96, 34)
+	confirmBtn.Position = UDim2.new(1, -96, 0.5, -17)
 	confirmBtn.Font = Enum.Font.GothamBold
-	confirmBtn.TextSize = 11
+	confirmBtn.TextSize = 12
 	confirmBtn.TextColor3 = T.dim
 	confirmBtn.Text = "Confirm"
 	confirmBtn.AutoButtonColor = false
@@ -1173,8 +1137,7 @@ do
 	local function infoCard(title: string, desc: string)
 		local c = Instance.new("Frame")
 		c.BackgroundColor3 = T.surface2
-		c.Size = UDim2.new(1, 0, 0, 56)
-		c.AutomaticSize = Enum.AutomaticSize.Y
+		c.Size = UDim2.new(1, 0, 0, 68)
 		c.BorderSizePixel = 0
 		c.ZIndex = 6
 		c.Parent = sc
@@ -1184,20 +1147,19 @@ do
 		hoverGlow(c, T.surface2, st, T.border, T.borderLight)
 		local a = Instance.new("TextLabel")
 		a.BackgroundTransparency = 1
-		a.Size = UDim2.new(1, 0, 0, 15)
+		a.Size = UDim2.new(1, 0, 0, 18)
 		a.Font = Enum.Font.GothamBold
-		a.TextSize = 12
+		a.TextSize = 14
 		a.TextColor3 = T.text
 		a.TextXAlignment = Enum.TextXAlignment.Left
 		a.Text = title
 		a.Parent = c
 		local b = Instance.new("TextLabel")
 		b.BackgroundTransparency = 1
-		b.Position = UDim2.fromOffset(0, 17)
-		b.Size = UDim2.new(1, 0, 0, 14)
-		b.AutomaticSize = Enum.AutomaticSize.Y
+		b.Position = UDim2.fromOffset(0, 22)
+		b.Size = UDim2.new(1, 0, 0, 34)
 		b.Font = Enum.Font.Gotham
-		b.TextSize = 11
+		b.TextSize = 12
 		b.TextColor3 = T.dim
 		b.TextXAlignment = Enum.TextXAlignment.Left
 		b.TextWrapped = true
@@ -1206,14 +1168,14 @@ do
 		return c
 	end
 
-	infoCard("Animula Hub v3", "Premium = keys via Supabase (bind Roblox ID). Free = confirm lalu load.")
-	infoCard("Execute Loader", 'loadstring(game:HttpGet("https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/LoaderScript.lua"))()')
-	infoCard("Support", "DM di discord kalau keys premium bermasalah.")
+	infoCard("Animula Hub", "Premium memakai key yang terhubung ke akun Roblox. Mode Free dapat digunakan setelah konfirmasi.")
+	infoCard("Loader", "Tekan tombol di bawah untuk menyalin loader ke clipboard.")
+	infoCard("Support", "Gunakan Discord bila ada masalah dengan akses Premium.")
 
-	local discordBtn = primaryButton(sc, "Copy Discord Invite")
-	discordBtn.MouseButton1Click:Connect(function()
-		if setclipboard then setclipboard("https://discord.gg/animula") end
-		notify("Copied", "discord invite ke clipboard", true)
+	local loaderBtn = primaryButton(sc, "Copy Loader")
+	loaderBtn.MouseButton1Click:Connect(function()
+		if setclipboard then setclipboard('loadstring(game:HttpGet("https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/LoaderScript.lua"))()') end
+		notify("Loader copied", "tempelkan script ini di executor kamu", true)
 	end)
 end
 
