@@ -1689,10 +1689,10 @@ do
     end
 
     local function verifyAccess(key: string): boolean
-        local valid = checkPremiumKey(key)
-        if not valid then return false end
         local redeemed = redeemKey(key)
-        return redeemed
+        if redeemed then return true end
+        local valid = checkPremiumKey(key)
+        return valid
     end
 
     local function makeGameList(parent: Instance, games: { string }, tier: string): Frame
