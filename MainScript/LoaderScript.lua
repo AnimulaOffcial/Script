@@ -1701,6 +1701,21 @@ do
         local scroll = makePage(name)
         addPageTitle(scroll, name, description)
 
+        local requiredPrefix = if expectedKeyType == "pk" then "Animula-pk-" else "Animula-fk-"
+        local keyLabel = if expectedKeyType == "pk" then "Premium" else "Freemium"
+        local function validateKeyFormat(key: string): (boolean, string)
+            if string.sub(key, 1, #requiredPrefix) ~= requiredPrefix then
+                return false, keyLabel .. " keys must begin with " .. requiredPrefix
+            end
+
+            local suffix = string.sub(key, #requiredPrefix + 1)
+            if #suffix ~= 25 or not string.match(suffix, "^[%w]+$") then
+                return false, keyLabel .. " keys need 25 letters or numbers after " .. requiredPrefix
+            end
+
+            return true, ""
+        end
+
         local accessCard = makeCard(scroll, 130)
         accessCard.Name = "KeyAccess"
         accessCard.LayoutOrder = 2
@@ -1713,7 +1728,7 @@ do
         keyBox.BorderSizePixel = 0
         keyBox.ClearTextOnFocus = false
         keyBox.PlaceholderColor3 = T.muted
-        keyBox.PlaceholderText = "Paste your key here"
+        keyBox.PlaceholderText = requiredPrefix .. "XXXXXXXXXXXXXXXXXXXXXXXXX"
         keyBox.Position = UDim2.fromOffset(16, 59)
         keyBox.Size = UDim2.new(1, -142, 0, 38)
         keyBox.Font = Enum.Font.Gotham
@@ -1743,7 +1758,7 @@ do
         verifyButton.Font = Enum.Font.GothamBold
         verifyButton.TextSize = 15
         verifyButton.TextColor3 = Color3.new(1, 1, 1)
-        verifyButton.Text = "Verify key"
+        verifyButton.Text = "Redeem key"
         verifyButton.ZIndex = 10
         verifyButton.Parent = accessCard
         corner(verifyButton, UDim.new(0, 9))
@@ -1768,7 +1783,14 @@ do
             if checking then return end
             local key = string.gsub(keyBox.Text, "^%s*(.-)%s*$", "%1")
             if key == "" then
-                status.Text = "Enter a key before verifying."
+                status.Text = keyLabel .. " keys must begin with " .. requiredPrefix
+                status.TextColor3 = T.error
+                return
+            end
+
+            local hasValidFormat, formatMessage = validateKeyFormat(key)
+            if not hasValidFormat then
+                status.Text = formatMessage
                 status.TextColor3 = T.error
                 return
             end
@@ -1787,7 +1809,7 @@ do
                     lockedState.Visible = false
                     gameList.Visible = true
                     keyBox.TextEditable = false
-                    verifyButton.Text = "Verified"
+                    verifyButton.Text = "Redeemed"
                     verifyButton.BackgroundColor3 = T.success
                     verifyStroke.Color = T.success
                     status.Text = "Access verified. Select a game below."
@@ -1798,11 +1820,10 @@ do
 
                 checking = false
                 verifyButton.Active = true
-                verifyButton.Text = "Verify key"
+                verifyButton.Text = "Redeem key"
                 verifyButton.BackgroundColor3 = T.primary
                 status.Text = "Key could not be verified. Try again."
                 status.TextColor3 = T.error
-                toast("Verification failed", "Check the key and try again.", false)
             end)
         end)
     end
