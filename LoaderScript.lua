@@ -17,20 +17,20 @@ local SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 -- tema hydro archon (biru furina)
 local T = {
-	bg = Color3.fromRGB(13, 20, 38),
-	surface = Color3.fromRGB(19, 30, 58),
-	surface2 = Color3.fromRGB(26, 42, 78),
-	surfaceHover = Color3.fromRGB(33, 52, 96),
-	primary = Color3.fromRGB(77, 163, 255),
-	primaryDark = Color3.fromRGB(42, 119, 217),
-	secondary = Color3.fromRGB(91, 202, 255),
-	accent = Color3.fromRGB(155, 214, 255),
-	gold = Color3.fromRGB(214, 196, 135),
-	text = Color3.fromRGB(235, 245, 255),
-	dim = Color3.fromRGB(155, 175, 205),
-	muted = Color3.fromRGB(105, 125, 158),
-	border = Color3.fromRGB(42, 64, 112),
-	borderLight = Color3.fromRGB(58, 86, 142),
+	bg = Color3.fromRGB(8, 13, 31),
+	surface = Color3.fromRGB(15, 25, 54),
+	surface2 = Color3.fromRGB(23, 39, 79),
+	surfaceHover = Color3.fromRGB(34, 59, 111),
+	primary = Color3.fromRGB(74, 145, 255),
+	primaryDark = Color3.fromRGB(49, 89, 202),
+	secondary = Color3.fromRGB(106, 208, 255),
+	accent = Color3.fromRGB(180, 228, 255),
+	gold = Color3.fromRGB(232, 207, 146),
+	text = Color3.fromRGB(241, 247, 255),
+	dim = Color3.fromRGB(174, 196, 229),
+	muted = Color3.fromRGB(112, 139, 184),
+	border = Color3.fromRGB(47, 78, 143),
+	borderLight = Color3.fromRGB(79, 119, 190),
 	success = Color3.fromRGB(74, 222, 128),
 	warning = Color3.fromRGB(251, 191, 36),
 	error = Color3.fromRGB(248, 113, 113),
@@ -248,19 +248,26 @@ local function redeemKey(key: string): (boolean, string)
 	return false, "gagal redeem, cek internet"
 end
 
-local function loadGameScript(gameName: string, tier: string)
+local function loadGameScript(gameName: string, tier: string): (boolean, string)
 	local base = "https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MenuScript/" .. tier .. "/Game/" .. gameName .. "/" .. gameName .. "Loader.lua"
-	local ok, err = pcall(function()
-		local code = game:HttpGet(base)
-		if code and #code > 10 then
-			loadstring(code)()
-		else
-			warn("[Animula] game script kosong: " .. gameName)
+	local ok, result = pcall(function()
+		if type(loadstring) ~= "function" then
+			error("executor tidak mendukung loadstring")
 		end
+		local code = game:HttpGet(base)
+		if type(code) ~= "string" or #code <= 10 then
+			error("script game kosong atau tidak ditemukan")
+		end
+		local chunk, compileError = loadstring(code)
+		if not chunk then error(compileError or "script game tidak valid") end
+		chunk()
 	end)
 	if not ok then
-		warn("[Animula] gagal load " .. gameName .. ": " .. tostring(err))
+		local message = tostring(result)
+		warn("[Animula] gagal load " .. gameName .. ": " .. message)
+		return false, message
 	end
+	return true, "loaded"
 end
 
 local GAMES_FREE = {
@@ -304,7 +311,7 @@ sg.Parent = hui
 
 local main = Instance.new("Frame")
 main.Name = "Main"
-main.Size = UDim2.fromOffset(600, 430)
+main.Size = UDim2.fromOffset(660, 455)
 main.Position = UDim2.fromScale(0.5, 0.5)
 main.AnchorPoint = Vector2.new(0.5, 0.5)
 main.BackgroundColor3 = T.surface
@@ -580,15 +587,20 @@ end)
 -- tab bar
 local tabBar = Instance.new("Frame")
 tabBar.Name = "TabBar"
-tabBar.BackgroundTransparency = 1
-tabBar.Size = UDim2.new(1, -16, 0, 38)
-tabBar.Position = UDim2.fromOffset(8, 62)
+tabBar.BackgroundColor3 = T.bg
+tabBar.BackgroundTransparency = 0.18
+tabBar.Size = UDim2.new(0, 150, 1, -78)
+tabBar.Position = UDim2.fromOffset(10, 62)
+tabBar.BorderSizePixel = 0
 tabBar.ZIndex = 9
 tabBar.Parent = main
+corner(tabBar, UDim.new(0, 12))
+stroke(tabBar, T.border, 1, 0.4)
+pad(tabBar, 7, 8, 7, 8)
 
 local tabLayout = Instance.new("UIListLayout")
-tabLayout.FillDirection = Enum.FillDirection.Horizontal
-tabLayout.Padding = UDim.new(0, 6)
+tabLayout.FillDirection = Enum.FillDirection.Vertical
+tabLayout.Padding = UDim.new(0, 5)
 tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 tabLayout.Parent = tabBar
 
@@ -599,8 +611,8 @@ local currentTab = "Premium"
 local body = Instance.new("Frame")
 body.Name = "Body"
 body.BackgroundTransparency = 1
-body.Size = UDim2.new(1, -16, 1, -108)
-body.Position = UDim2.fromOffset(8, 100)
+body.Size = UDim2.new(1, -180, 1, -74)
+body.Position = UDim2.fromOffset(170, 62)
 body.ZIndex = 5
 body.Parent = main
 
@@ -740,7 +752,8 @@ for _, info in ipairs({
 	local b = Instance.new("TextButton")
 	b.Name = info.key
 	b.BackgroundColor3 = if info.key == currentTab then T.primary else T.surface2
-	b.Size = UDim2.new(0.333, -4, 1, 0)
+	b.Size = UDim2.new(1, 0, 0, 38)
+	b.TextXAlignment = Enum.TextXAlignment.Left
 	b.Font = Enum.Font.GothamSemibold
 	b.TextSize = 12
 	b.TextColor3 = if info.key == currentTab then Color3.new(1, 1, 1) else T.dim
@@ -761,10 +774,10 @@ for _, info in ipairs({
 		if currentTab ~= info.key then tween(b, { BackgroundColor3 = T.surface2 }, 0.12) end
 	end)
 	b.MouseButton1Down:Connect(function()
-		tween(b, { Size = UDim2.new(0.333, -8, 1, -2) }, 0.07)
+		tween(b, { Size = UDim2.new(1, -2, 0, 36) }, 0.07)
 	end)
 	b.MouseButton1Up:Connect(function()
-		tween(b, { Size = UDim2.new(0.333, -4, 1, 0) }, 0.1, Enum.EasingStyle.Back)
+		tween(b, { Size = UDim2.new(1, 0, 0, 38) }, 0.1, Enum.EasingStyle.Back)
 	end)
 	b.MouseButton1Click:Connect(function() switchTab(info.key) end)
 end
@@ -790,7 +803,7 @@ local function gameGrid(parent: Instance, games: { string }, selected: { value: 
 	grid.AutomaticSize = Enum.AutomaticSize.Y
 	grid.Parent = parent
 	local layout = Instance.new("UIGridLayout")
-	layout.CellSize = UDim2.fromOffset(158, 31)
+	layout.CellSize = UDim2.fromOffset(141, 31)
 	layout.CellPadding = UDim2.fromOffset(6, 6)
 	layout.FillDirectionMaxCells = 3
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1038,8 +1051,12 @@ do
 		if not ok then notify("Key expired", msg, false) return end
 		notify("Loading Premium", sel .. " ...", true)
 		task.wait(0.25)
-		sg:Destroy()
-		loadGameScript(sel, "Premium")
+		local loaded, err = loadGameScript(sel, "Premium")
+		if loaded then
+			sg:Destroy()
+		else
+			notify("Gagal memuat", err, false)
+		end
 	end)
 end
 
@@ -1138,8 +1155,12 @@ do
 		if not sel then notify("Pilih game dulu", "klik salah satu game free", false) return end
 		notify("Loading Free", sel .. " ...", true)
 		task.wait(0.25)
-		sg:Destroy()
-		loadGameScript(sel, "Free")
+		local loaded, err = loadGameScript(sel, "Free")
+		if loaded then
+			sg:Destroy()
+		else
+			notify("Gagal memuat", err, false)
+		end
 	end)
 end
 
