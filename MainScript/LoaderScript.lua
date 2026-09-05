@@ -1277,36 +1277,6 @@ do
     loaderGui.DisplayOrder = 20
     loaderGui.Parent = root
 
-    local glowLayer = Instance.new("Frame")
-    glowLayer.Name = "CornerGlowLayer"
-    glowLayer.BackgroundTransparency = 1
-    glowLayer.AnchorPoint = Vector2.new(0.5, 0.5)
-    glowLayer.Position = UDim2.fromScale(0.5, 0.5)
-    glowLayer.Size = UDim2.fromOffset(630, 440)
-    glowLayer.ZIndex = 1
-    glowLayer.Parent = loaderGui
-
-    local function makeCornerGlow(position: UDim2)
-        local glow = Instance.new("ImageLabel")
-        glow.Name = "CornerGlow"
-        glow.BackgroundTransparency = 1
-        glow.Image = "rbxassetid://5028857084"
-        glow.ImageColor3 = T.primary
-        glow.ImageTransparency = 0.16
-        glow.ScaleType = Enum.ScaleType.Slice
-        glow.SliceCenter = Rect.new(24, 24, 276, 276)
-        glow.AnchorPoint = Vector2.new(0.5, 0.5)
-        glow.Position = position
-        glow.Size = UDim2.fromOffset(96, 96)
-        glow.ZIndex = 1
-        glow.Parent = glowLayer
-    end
-
-    makeCornerGlow(UDim2.fromOffset(0, 0))
-    makeCornerGlow(UDim2.new(1, 0, 0, 0))
-    makeCornerGlow(UDim2.new(0, 0, 1, 0))
-    makeCornerGlow(UDim2.fromScale(1, 1))
-
     local main = Instance.new("Frame")
     main.Name = "Main"
     main.BackgroundColor3 = T.surface
@@ -1319,49 +1289,6 @@ do
     main.Parent = loaderGui
     corner(main, UDim.new(0, 16))
     stroke(main, T.primary, 1.8, 0.12)
-
-    local ambientLayer = Instance.new("Frame")
-    ambientLayer.Name = "AmbientTiles"
-    ambientLayer.BackgroundTransparency = 1
-    ambientLayer.Size = UDim2.fromScale(1, 1)
-    ambientLayer.BorderSizePixel = 0
-    ambientLayer.ClipsDescendants = true
-    ambientLayer.ZIndex = 6
-    ambientLayer.Parent = main
-
-    local tilePaths = {
-        { start = UDim2.fromOffset(190, 104), finish = UDim2.fromOffset(224, 130), size = 8, delay = 0.0, round = false },
-        { start = UDim2.new(1, -82, 0, 102), finish = UDim2.new(1, -122, 0, 150), size = 12, delay = 0.2, round = true },
-        { start = UDim2.fromOffset(198, 82), finish = UDim2.fromOffset(250, 102), size = 6, delay = 0.4, round = false },
-        { start = UDim2.new(1, -68, 1, -56), finish = UDim2.new(1, -112, 1, -88), size = 10, delay = 0.6, round = false },
-        { start = UDim2.fromOffset(174, 310), finish = UDim2.fromOffset(205, 286), size = 7, delay = 0.8, round = true },
-        { start = UDim2.new(1, -52, 0, 240), finish = UDim2.new(1, -82, 0, 214), size = 9, delay = 1.0, round = true },
-        { start = UDim2.fromOffset(310, 70), finish = UDim2.fromOffset(342, 91), size = 5, delay = 1.2, round = false },
-        { start = UDim2.new(1, -160, 1, -38), finish = UDim2.new(1, -196, 1, -64), size = 11, delay = 1.4, round = true },
-        { start = UDim2.fromOffset(178, 202), finish = UDim2.fromOffset(198, 176), size = 6, delay = 1.6, round = false },
-        { start = UDim2.new(1, -90, 0, 322), finish = UDim2.new(1, -118, 0, 296), size = 8, delay = 1.8, round = true },
-    }
-    for _, path in ipairs(tilePaths) do
-        local tile = Instance.new("Frame")
-        tile.BackgroundColor3 = if path.round then T.primary else T.secondary
-        tile.BackgroundTransparency = 0.82
-        tile.BorderSizePixel = 0
-        tile.Position = path.start
-        tile.Size = UDim2.fromOffset(path.size, path.size)
-        tile.Rotation = if path.round then 0 else 18
-        tile.ZIndex = 6
-        tile.Parent = ambientLayer
-        corner(tile, if path.round then UDim.new(1, 0) else UDim.new(0, 3))
-        stroke(tile, T.accent, 1, 0.64)
-        task.spawn(function()
-            task.wait(path.delay)
-            while tile.Parent do
-                tween(tile, { Position = path.finish, Rotation = if path.round then 0 else -14, BackgroundTransparency = 0.66 }, 2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut).Completed:Wait()
-                if not tile.Parent then break end
-                tween(tile, { Position = path.start, Rotation = if path.round then 0 else 18, BackgroundTransparency = 0.84 }, 2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut).Completed:Wait()
-            end
-        end)
-    end
 
     local header = Instance.new("Frame")
     header.Name = "Header"
@@ -1612,8 +1539,8 @@ do
             }, 0.15)
             state.button.Font = Enum.Font.GothamBold
             tween(state.stroke, {
-                Color = if selected then T.primary else T.border,
-                Transparency = if selected then 0.14 else 0.7,
+                Color = T.border,
+                Transparency = if selected then 0.35 else 0.7,
             }, 0.15)
         end
     end
@@ -1630,13 +1557,12 @@ do
         button.Font = Enum.Font.GothamBold
         button.TextSize = 15
         button.TextColor3 = T.dim
-        button.TextXAlignment = Enum.TextXAlignment.Left
+        button.TextXAlignment = Enum.TextXAlignment.Center
         button.Text = name
         button.ZIndex = 9
         button.Parent = sidebar
         corner(button, UDim.new(0, 9))
         local tabStroke = stroke(button, T.border, 1, 0.78)
-        pad(button, 14, 0, 10, 0)
 
         button.MouseEnter:Connect(function()
             if activeTab ~= name then tween(button, { BackgroundColor3 = T.surfaceHover }, 0.12) end
@@ -1977,13 +1903,11 @@ do
             windowStart.Y.Offset + delta.Y
         )
         main.Position = position
-        glowLayer.Position = position
     end)
 
     UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
         if processed or input.KeyCode ~= Enum.KeyCode.RightShift then return end
         local visible = not main.Visible
         main.Visible = visible
-        glowLayer.Visible = visible
     end)
 end
