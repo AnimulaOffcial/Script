@@ -249,7 +249,7 @@ local function redeemKey(key: string): (boolean, string)
 end
 
 local function loadGameScript(gameName: string, tier: string): (boolean, string)
-	local base = "https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MenuScript/" .. tier .. "/Game/" .. gameName .. "/" .. gameName .. "Loader.lua"
+	local base = "https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/MenuScript/" .. tier .. "/Game/" .. gameName .. "/" .. gameName .. "Loader.lua"
 	local ok, result = pcall(function()
 		if type(loadstring) ~= "function" then
 			error("executor tidak mendukung loadstring")
