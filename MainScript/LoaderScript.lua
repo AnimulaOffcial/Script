@@ -1320,44 +1320,6 @@ do
     corner(main, UDim.new(0, 16))
     stroke(main, T.primary, 1.8, 0.12)
 
-    local function edge(position: UDim2, size: UDim2, vertical: boolean)
-        local line = Instance.new("Frame")
-        line.BackgroundColor3 = T.secondary
-        line.BackgroundTransparency = 0.1
-        line.Position = position
-        line.Size = size
-        line.BorderSizePixel = 0
-        line.ZIndex = 7
-        line.Parent = main
-        corner(line, UDim.new(1, 0))
-
-        local lineGradient = Instance.new("UIGradient")
-        lineGradient.Color = ColorSequence.new(T.secondary, T.accent)
-        lineGradient.Rotation = if vertical then 90 else 0
-        lineGradient.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.2),
-            NumberSequenceKeypoint.new(0.23, 0.2),
-            NumberSequenceKeypoint.new(0.24, 1),
-            NumberSequenceKeypoint.new(0.39, 1),
-            NumberSequenceKeypoint.new(0.4, 0.12),
-            NumberSequenceKeypoint.new(0.64, 0.12),
-            NumberSequenceKeypoint.new(0.65, 1),
-            NumberSequenceKeypoint.new(0.8, 1),
-            NumberSequenceKeypoint.new(0.81, 0.25),
-            NumberSequenceKeypoint.new(1, 0.25),
-        })
-        lineGradient.Parent = line
-    end
-
-    edge(UDim2.fromOffset(18, 2), UDim2.fromOffset(42, 1), false)
-    edge(UDim2.new(1, -60, 0, 2), UDim2.fromOffset(42, 1), false)
-    edge(UDim2.new(0, 18, 1, -3), UDim2.fromOffset(42, 1), false)
-    edge(UDim2.new(1, -60, 1, -3), UDim2.fromOffset(42, 1), false)
-    edge(UDim2.fromOffset(2, 18), UDim2.fromOffset(1, 38), true)
-    edge(UDim2.new(1, -3, 0, 18), UDim2.fromOffset(1, 38), true)
-    edge(UDim2.new(0, 2, 1, -56), UDim2.fromOffset(1, 38), true)
-    edge(UDim2.new(1, -3, 1, -56), UDim2.fromOffset(1, 38), true)
-
     local ambientLayer = Instance.new("Frame")
     ambientLayer.Name = "AmbientTiles"
     ambientLayer.BackgroundTransparency = 1
@@ -1368,29 +1330,35 @@ do
     ambientLayer.Parent = main
 
     local tilePaths = {
-        { start = UDim2.fromOffset(194, 112), finish = UDim2.fromOffset(232, 142), size = 10, delay = 0.0 },
-        { start = UDim2.new(1, -84, 0, 108), finish = UDim2.new(1, -126, 0, 156), size = 14, delay = 0.35 },
-        { start = UDim2.fromOffset(208, 1), finish = UDim2.fromOffset(266, 18), size = 8, delay = 0.7 },
-        { start = UDim2.new(1, -70, 1, -58), finish = UDim2.new(1, -116, 1, -92), size = 12, delay = 1.05 },
+        { start = UDim2.fromOffset(190, 104), finish = UDim2.fromOffset(224, 130), size = 8, delay = 0.0, round = false },
+        { start = UDim2.new(1, -82, 0, 102), finish = UDim2.new(1, -122, 0, 150), size = 12, delay = 0.2, round = true },
+        { start = UDim2.fromOffset(198, 82), finish = UDim2.fromOffset(250, 102), size = 6, delay = 0.4, round = false },
+        { start = UDim2.new(1, -68, 1, -56), finish = UDim2.new(1, -112, 1, -88), size = 10, delay = 0.6, round = false },
+        { start = UDim2.fromOffset(174, 310), finish = UDim2.fromOffset(205, 286), size = 7, delay = 0.8, round = true },
+        { start = UDim2.new(1, -52, 0, 240), finish = UDim2.new(1, -82, 0, 214), size = 9, delay = 1.0, round = true },
+        { start = UDim2.fromOffset(310, 70), finish = UDim2.fromOffset(342, 91), size = 5, delay = 1.2, round = false },
+        { start = UDim2.new(1, -160, 1, -38), finish = UDim2.new(1, -196, 1, -64), size = 11, delay = 1.4, round = true },
+        { start = UDim2.fromOffset(178, 202), finish = UDim2.fromOffset(198, 176), size = 6, delay = 1.6, round = false },
+        { start = UDim2.new(1, -90, 0, 322), finish = UDim2.new(1, -118, 0, 296), size = 8, delay = 1.8, round = true },
     }
     for _, path in ipairs(tilePaths) do
         local tile = Instance.new("Frame")
-        tile.BackgroundColor3 = T.secondary
-        tile.BackgroundTransparency = 0.8
+        tile.BackgroundColor3 = if path.round then T.primary else T.secondary
+        tile.BackgroundTransparency = 0.82
         tile.BorderSizePixel = 0
         tile.Position = path.start
         tile.Size = UDim2.fromOffset(path.size, path.size)
-        tile.Rotation = 18
+        tile.Rotation = if path.round then 0 else 18
         tile.ZIndex = 6
         tile.Parent = ambientLayer
-        corner(tile, UDim.new(0, 3))
+        corner(tile, if path.round then UDim.new(1, 0) else UDim.new(0, 3))
         stroke(tile, T.accent, 1, 0.64)
         task.spawn(function()
             task.wait(path.delay)
             while tile.Parent do
-                tween(tile, { Position = path.finish, Rotation = -14, BackgroundTransparency = 0.65 }, 2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut).Completed:Wait()
+                tween(tile, { Position = path.finish, Rotation = if path.round then 0 else -14, BackgroundTransparency = 0.66 }, 2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut).Completed:Wait()
                 if not tile.Parent then break end
-                tween(tile, { Position = path.start, Rotation = 18, BackgroundTransparency = 0.82 }, 2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut).Completed:Wait()
+                tween(tile, { Position = path.start, Rotation = if path.round then 0 else 18, BackgroundTransparency = 0.84 }, 2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut).Completed:Wait()
             end
         end)
     end
@@ -1482,18 +1450,6 @@ do
     corner(sidebar, UDim.new(0, 12))
     stroke(sidebar, T.border, 1, 0.5)
 
-    local navLabel = Instance.new("TextLabel")
-    navLabel.BackgroundTransparency = 1
-    navLabel.Position = UDim2.fromOffset(13, 13)
-    navLabel.Size = UDim2.new(1, -26, 0, 16)
-    navLabel.Font = Enum.Font.GothamBold
-    navLabel.TextSize = 11
-    navLabel.TextColor3 = T.muted
-    navLabel.TextXAlignment = Enum.TextXAlignment.Left
-    navLabel.Text = "NAVIGATION"
-    navLabel.ZIndex = 9
-    navLabel.Parent = sidebar
-
     local content = Instance.new("Frame")
     content.Name = "Content"
     content.BackgroundTransparency = 1
@@ -1503,7 +1459,7 @@ do
     content.Parent = main
 
     local pages: { [string]: Frame } = {}
-    local tabButtons: { [string]: { button: TextButton, indicator: Frame, stroke: UIStroke } } = {}
+    local tabButtons: { [string]: { button: TextButton, stroke: UIStroke } } = {}
     local activeTab = "Premium"
 
     local function toast(titleText: string, message: string, success: boolean)
@@ -1650,16 +1606,15 @@ do
         for tabName, state in pairs(tabButtons) do
             local selected = tabName == name
             tween(state.button, {
-                BackgroundColor3 = if selected then T.surfaceHover else T.surface,
+                BackgroundColor3 = if selected then T.surface2 else T.surface,
                 BackgroundTransparency = if selected then 0.02 else 0.12,
                 TextColor3 = if selected then T.text else T.dim,
             }, 0.15)
             state.button.Font = Enum.Font.GothamBold
             tween(state.stroke, {
-                Color = if selected then T.secondary else T.border,
-                Transparency = if selected then 0.16 else 0.7,
+                Color = if selected then T.primary else T.border,
+                Transparency = if selected then 0.14 else 0.7,
             }, 0.15)
-            tween(state.indicator, { BackgroundTransparency = if selected then 0 else 1 }, 0.15)
         end
     end
 
@@ -1668,7 +1623,7 @@ do
         button.Name = name
         button.BackgroundColor3 = T.surface
         button.BackgroundTransparency = 0.12
-        button.Position = UDim2.fromOffset(7, 40 + (order - 1) * 48)
+        button.Position = UDim2.fromOffset(7, 12 + (order - 1) * 48)
         button.Size = UDim2.new(1, -14, 0, 40)
         button.BorderSizePixel = 0
         button.AutoButtonColor = false
@@ -1681,18 +1636,7 @@ do
         button.Parent = sidebar
         corner(button, UDim.new(0, 9))
         local tabStroke = stroke(button, T.border, 1, 0.78)
-        pad(button, 29, 0, 10, 0)
-
-        local indicator = Instance.new("Frame")
-        indicator.Name = "ActiveIndicator"
-        indicator.BackgroundColor3 = T.secondary
-        indicator.BackgroundTransparency = 1
-        indicator.Position = UDim2.fromOffset(10, 9)
-        indicator.Size = UDim2.fromOffset(3, 22)
-        indicator.BorderSizePixel = 0
-        indicator.ZIndex = 10
-        indicator.Parent = button
-        corner(indicator, UDim.new(1, 0))
+        pad(button, 14, 0, 10, 0)
 
         button.MouseEnter:Connect(function()
             if activeTab ~= name then tween(button, { BackgroundColor3 = T.surfaceHover }, 0.12) end
@@ -1703,7 +1647,7 @@ do
         button.MouseButton1Click:Connect(function()
             showTab(name)
         end)
-        tabButtons[name] = { button = button, indicator = indicator, stroke = tabStroke }
+        tabButtons[name] = { button = button, stroke = tabStroke }
     end
 
     local function verifyAccess(key: string, expectedKeyType: string): boolean
