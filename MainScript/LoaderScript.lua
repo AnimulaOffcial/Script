@@ -28,7 +28,7 @@ local T = {
 	gold = Color3.fromRGB(232, 207, 146),
 	text = Color3.fromRGB(241, 247, 255),
 	dim = Color3.fromRGB(174, 196, 229),
-	muted = Color3.fromRGB(112, 139, 184),
+	muted = Color3.fromRGB(132, 153, 192),
 	border = Color3.fromRGB(47, 78, 143),
 	borderLight = Color3.fromRGB(79, 119, 190),
 	success = Color3.fromRGB(74, 222, 128),
@@ -381,19 +381,16 @@ do
 	main.ZIndex = 2
 end
 
--- accent bar 3 warna + shimmer
+-- accent sederhana untuk memisahkan header tanpa mengganggu konten
 do
 	local bar = Instance.new("Frame")
 	bar.BackgroundColor3 = T.primary
-	bar.Size = UDim2.new(1, 0, 0, 3)
+	bar.Size = UDim2.new(1, 0, 0, 2)
 	bar.BorderSizePixel = 0
 	bar.ZIndex = 8
 	bar.Parent = main
 	corner(bar, UDim.new(0, 99))
-	gradient3(bar, T.primary, T.secondary, T.gold, 0)
-	local c = bar:FindFirstChildOfClass("UICorner") :: any
-	if c then c.CornerRadius = UDim.new(0, 18) end
-	shimmerLoop(bar, UDim.new(0, 99), 1.5)
+	gradient(bar, T.primary, T.secondary, 0)
 end
 
 -- glass highlight atas
@@ -465,7 +462,7 @@ titleLbl.BackgroundTransparency = 1
 titleLbl.Position = UDim2.fromOffset(68, 9)
 titleLbl.Size = UDim2.new(1, -180, 0, 23)
 titleLbl.Font = Enum.Font.GothamBold
-titleLbl.TextSize = 20
+titleLbl.TextSize = 22
 titleLbl.TextColor3 = T.text
 titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
@@ -478,7 +475,7 @@ subLbl.BackgroundTransparency = 1
 subLbl.Position = UDim2.fromOffset(68, 34)
 subLbl.Size = UDim2.new(1, -180, 0, 16)
 subLbl.Font = Enum.Font.Gotham
-subLbl.TextSize = 12
+subLbl.TextSize = 13
 subLbl.TextColor3 = T.dim
 subLbl.TextXAlignment = Enum.TextXAlignment.Left
 subLbl.Text = "v3  •  Premium / Free / Info"
@@ -548,11 +545,20 @@ closeBtn.MouseButton1Click:Connect(function()
 	sg:Destroy()
 end)
 
+local headerDivider = Instance.new("Frame")
+headerDivider.BackgroundColor3 = T.border
+headerDivider.BackgroundTransparency = 0.48
+headerDivider.Size = UDim2.new(1, -28, 0, 1)
+headerDivider.Position = UDim2.fromOffset(14, 62)
+headerDivider.BorderSizePixel = 0
+headerDivider.ZIndex = 8
+headerDivider.Parent = main
+
 -- tab bar
 local tabBar = Instance.new("Frame")
 tabBar.Name = "TabBar"
-tabBar.BackgroundColor3 = T.bg
-tabBar.BackgroundTransparency = 0.18
+tabBar.BackgroundColor3 = T.surface
+tabBar.BackgroundTransparency = 0.04
 tabBar.Size = UDim2.new(0, 145, 1, -86)
 tabBar.Position = UDim2.fromOffset(10, 68)
 tabBar.BorderSizePixel = 0
@@ -567,6 +573,18 @@ tabLayout.FillDirection = Enum.FillDirection.Vertical
 tabLayout.Padding = UDim.new(0, 5)
 tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 tabLayout.Parent = tabBar
+
+local navCaption = Instance.new("TextLabel")
+navCaption.Name = "NavigationCaption"
+navCaption.BackgroundTransparency = 1
+navCaption.Size = UDim2.new(1, 0, 0, 18)
+navCaption.Font = Enum.Font.GothamBold
+navCaption.TextSize = 10
+navCaption.TextColor3 = T.muted
+navCaption.TextXAlignment = Enum.TextXAlignment.Left
+navCaption.Text = "NAVIGATION"
+navCaption.LayoutOrder = 0
+navCaption.Parent = tabBar
 
 local pages: { [string]: Frame } = {}
 local tabBtns: { [string]: TextButton } = {}
@@ -692,45 +710,55 @@ local function switchTab(name: string)
 	for k, b in pairs(tabBtns) do
 		local isActive = k == name
 		tween(b, {
-			BackgroundColor3 = if isActive then T.primary else T.surface2,
-			TextColor3 = if isActive then Color3.new(1, 1, 1) else T.dim,
+			BackgroundColor3 = if isActive then T.surfaceHover else T.surface2,
+			BackgroundTransparency = if isActive then 0 else 0.28,
+			TextColor3 = if isActive then T.text else T.dim,
 		}, 0.18)
 		local st = b:FindFirstChildOfClass("UIStroke") :: UIStroke?
-		if st then tween(st, { Color = if isActive then T.primary else T.border }, 0.18) end
-		-- gradient hanya untuk tab aktif (hapus dari yang nonaktif biar warnanya benar)
-		local g = b:FindFirstChildOfClass("UIGradient")
-		if isActive and not g then
-			gradient(b, T.primary, T.primaryDark, 90)
-		elseif not isActive and g then
-			g:Destroy()
-		end
+		if st then tween(st, {
+			Color = if isActive then T.primary else T.border,
+			Transparency = if isActive then 0.12 else 0.72,
+		}, 0.18) end
+		local indicator = b:FindFirstChild("ActiveIndicator") :: Frame?
+		if indicator then tween(indicator, { BackgroundTransparency = if isActive then 0 else 1 }, 0.18) end
 	end
 end
 
 -- tab buttons (premium default aktif)
-for _, info in ipairs({
+for index, info in ipairs({
 	{ key = "Premium", label = "◆ Premium" },
 	{ key = "Free", label = "◇ Free" },
 	{ key = "Info", label = "ⓘ Info" },
 }) do
 	local b = Instance.new("TextButton")
 	b.Name = info.key
-	b.BackgroundColor3 = if info.key == currentTab then T.primary else T.surface2
+	b.BackgroundColor3 = if info.key == currentTab then T.surfaceHover else T.surface2
+	b.BackgroundTransparency = if info.key == currentTab then 0 else 0.28
 	b.Size = UDim2.new(1, 0, 0, 38)
 	b.TextXAlignment = Enum.TextXAlignment.Left
 	b.Font = Enum.Font.GothamSemibold
 	b.TextSize = 14
-	b.TextColor3 = if info.key == currentTab then Color3.new(1, 1, 1) else T.dim
-	b.Text = info.label
+	b.TextColor3 = if info.key == currentTab then T.text else T.dim
+	b.Text = string.gsub(info.label, "^%S+%s*", "")
+	b.LayoutOrder = index
 	b.AutoButtonColor = false
 	b.BorderSizePixel = 0
 	b.ZIndex = 9
 	b.Parent = tabBar
 	corner(b, UDim.new(0, 9))
-	local st = stroke(b, if info.key == currentTab then T.primary else T.border, 1, 0.45)
+	local st = stroke(b, if info.key == currentTab then T.primary else T.border, 1, if info.key == currentTab then 0.12 else 0.72)
+	pad(b, 11, 0, 8, 0)
+	local indicator = Instance.new("Frame")
+	indicator.Name = "ActiveIndicator"
+	indicator.BackgroundColor3 = T.secondary
+	indicator.BackgroundTransparency = if info.key == currentTab then 0 else 1
+	indicator.Size = UDim2.fromOffset(3, 20)
+	indicator.Position = UDim2.new(0, 0, 0.5, -10)
+	indicator.BorderSizePixel = 0
+	indicator.Parent = b
+	corner(indicator, UDim.new(1, 0))
 	tabBtns[info.key] = b
 	ripple(b, Color3.new(1, 1, 1))
-	if info.key == currentTab then gradient(b, T.primary, T.primaryDark, 90) end
 	b.MouseEnter:Connect(function()
 		if currentTab ~= info.key then tween(b, { BackgroundColor3 = T.surfaceHover }, 0.12) end
 	end)
@@ -751,10 +779,10 @@ local function sectionTitle(parent: Instance, text: string)
 	l.BackgroundTransparency = 1
 	l.Size = UDim2.new(1, 0, 0, 18)
 	l.Font = Enum.Font.GothamBold
-	l.TextSize = 13
+	l.TextSize = 15
 	l.TextColor3 = T.accent
 	l.TextXAlignment = Enum.TextXAlignment.Left
-	l.Text = string.upper(text)
+	l.Text = text
 	l.Parent = parent
 	return l
 end
@@ -832,15 +860,57 @@ local function primaryButton(parent: Instance, text: string): TextButton
 	btn.ZIndex = 6
 	btn.Parent = parent
 	corner(btn, UDim.new(0, 9))
-	gradient(btn, T.primary, T.primaryDark, 90)
 	stroke(btn, T.borderLight, 1, 0.55)
 	ripple(btn, Color3.new(1, 1, 1))
-	shimmerLoop(btn, UDim.new(0, 9), 2.2)
 	btn.MouseEnter:Connect(function() tween(btn, { BackgroundColor3 = Color3.fromRGB(96, 176, 255) }, 0.12) end)
 	btn.MouseLeave:Connect(function() tween(btn, { BackgroundColor3 = T.primary }, 0.12) end)
 	btn.MouseButton1Down:Connect(function() tween(btn, { Size = UDim2.new(1, -2, 0, 38) }, 0.07) end)
 	btn.MouseButton1Up:Connect(function() tween(btn, { Size = UDim2.new(1, 0, 0, 40) }, 0.1, Enum.EasingStyle.Back) end)
 	return btn
+end
+
+local function guideCard(parent: Instance, title: string, description: string): Frame
+	local card = Instance.new("Frame")
+	card.BackgroundColor3 = T.surface
+	card.Size = UDim2.new(1, 0, 0, 96)
+	card.BorderSizePixel = 0
+	card.ZIndex = 6
+	card.Parent = parent
+	corner(card, UDim.new(0, 11))
+	stroke(card, T.border, 1, 0.48)
+	pad(card, 13, 11, 13, 11)
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Size = UDim2.new(1, 0, 0, 18)
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.TextSize = 14
+	titleLabel.TextColor3 = T.text
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.Text = title
+	titleLabel.Parent = card
+
+	local divider = Instance.new("Frame")
+	divider.BackgroundColor3 = T.border
+	divider.BackgroundTransparency = 0.35
+	divider.Size = UDim2.new(1, 0, 0, 1)
+	divider.Position = UDim2.fromOffset(0, 25)
+	divider.BorderSizePixel = 0
+	divider.Parent = card
+
+	local body = Instance.new("TextLabel")
+	body.BackgroundTransparency = 1
+	body.Position = UDim2.fromOffset(0, 34)
+	body.Size = UDim2.new(1, 0, 0, 46)
+	body.Font = Enum.Font.Gotham
+	body.TextSize = 12
+	body.TextColor3 = T.dim
+	body.TextXAlignment = Enum.TextXAlignment.Left
+	body.TextYAlignment = Enum.TextYAlignment.Top
+	body.TextWrapped = true
+	body.Text = description
+	body.Parent = card
+	return card
 end
 
 -- TAB: PREMIUM
@@ -856,48 +926,47 @@ local premiumState = {
 }
 do
 	local sc = getScroll(premiumPage)
-	sectionTitle(sc, "Premium Access")
+	sectionTitle(sc, "Akses Premium")
 
 	local card = Instance.new("Frame")
 	card.BackgroundColor3 = T.surface2
-	card.Size = UDim2.new(1, 0, 0, 106)
+	card.Size = UDim2.new(1, 0, 0, 148)
 	card.BorderSizePixel = 0
 	card.ZIndex = 6
 	card.Parent = sc
 	corner(card, UDim.new(0, 12))
-	local cardStroke = stroke(card, T.border, 1, 0.3)
-	pad(card, 12, 10, 12, 10)
-	hoverGlow(card, T.surface2, cardStroke, T.border, T.borderLight)
+	stroke(card, T.border, 1, 0.52)
+	pad(card, 16, 14, 16, 14)
 
 	local l1 = Instance.new("TextLabel")
 	l1.BackgroundTransparency = 1
-	l1.Size = UDim2.new(1, 0, 0, 15)
+	l1.Size = UDim2.new(1, 0, 0, 20)
 	l1.Font = Enum.Font.GothamBold
-	l1.TextSize = 15
+	l1.TextSize = 16
 	l1.TextColor3 = T.text
 	l1.TextXAlignment = Enum.TextXAlignment.Left
-	l1.Text = "Premium Keys"
+	l1.Text = "Key Premium"
 	l1.Parent = card
 
 	local l2 = Instance.new("TextLabel")
 	l2.BackgroundTransparency = 1
-	l2.Position = UDim2.fromOffset(0, 20)
-	l2.Size = UDim2.new(1, 0, 0, 14)
+	l2.Position = UDim2.fromOffset(0, 25)
+	l2.Size = UDim2.new(1, 0, 0, 16)
 	l2.Font = Enum.Font.Gotham
-	l2.TextSize = 12
+	l2.TextSize = 13
 	l2.TextColor3 = T.muted
 	l2.TextXAlignment = Enum.TextXAlignment.Left
-	l2.Text = "masukin key, otomatis cek ke supabase + bind roblox id"
+	l2.Text = "Key akan dihubungkan ke akun Roblox ini."
 	l2.Parent = card
 
 	local keyBox = Instance.new("TextBox")
 	keyBox.BackgroundColor3 = T.bg
-	keyBox.Size = UDim2.new(1, -100, 0, 34)
-	keyBox.Position = UDim2.fromOffset(0, 43)
+	keyBox.Size = UDim2.new(1, -116, 0, 40)
+	keyBox.Position = UDim2.fromOffset(0, 57)
 	keyBox.Font = Enum.Font.Gotham
-	keyBox.TextSize = 13
+	keyBox.TextSize = 14
 	keyBox.TextColor3 = T.text
-	keyBox.PlaceholderText = "Animula-pk-XXXXX / Animula-fk-XXXXX"
+	keyBox.PlaceholderText = "Tempel key Premium di sini"
 	keyBox.PlaceholderColor3 = T.muted
 	keyBox.Text = ""
 	keyBox.ClearTextOnFocus = false
@@ -913,18 +982,17 @@ do
 
 	local checkBtn = Instance.new("TextButton")
 	checkBtn.BackgroundColor3 = T.primary
-	checkBtn.Size = UDim2.fromOffset(92, 34)
-	checkBtn.Position = UDim2.new(1, -92, 0, 43)
+	checkBtn.Size = UDim2.fromOffset(106, 40)
+	checkBtn.Position = UDim2.new(1, -106, 0, 57)
 	checkBtn.Font = Enum.Font.GothamBold
-	checkBtn.TextSize = 12
+	checkBtn.TextSize = 14
 	checkBtn.TextColor3 = Color3.new(1, 1, 1)
-	checkBtn.Text = "Check ✓"
+	checkBtn.Text = "Verifikasi"
 	checkBtn.AutoButtonColor = false
 	checkBtn.BorderSizePixel = 0
 	checkBtn.ZIndex = 7
 	checkBtn.Parent = card
 	corner(checkBtn, UDim.new(0, 8))
-	gradient(checkBtn, T.primary, T.primaryDark, 90)
 	ripple(checkBtn, Color3.new(1, 1, 1))
 	checkBtn.MouseEnter:Connect(function() tween(checkBtn, { BackgroundColor3 = Color3.fromRGB(96, 176, 255) }, 0.12) end)
 	checkBtn.MouseLeave:Connect(function()
@@ -934,13 +1002,13 @@ do
 
 	local hint = Instance.new("TextLabel")
 	hint.BackgroundTransparency = 1
-	hint.Position = UDim2.fromOffset(0, 83)
+	hint.Position = UDim2.fromOffset(0, 108)
 	hint.Size = UDim2.new(1, 0, 0, 14)
 	hint.Font = Enum.Font.Gotham
-	hint.TextSize = 11
+	hint.TextSize = 12
 	hint.TextColor3 = T.muted
 	hint.TextXAlignment = Enum.TextXAlignment.Left
-	hint.Text = "dapatkan key di web /generetekey (fk) atau beli (pk)"
+	hint.Text = "Belum punya key? Gunakan key Free."
 	hint.Parent = card
 
 	local statusLbl = Instance.new("TextLabel")
@@ -951,8 +1019,11 @@ do
 	statusLbl.TextColor3 = T.dim
 	statusLbl.TextXAlignment = Enum.TextXAlignment.Left
 	statusLbl.Text = ""
+	statusLbl.Visible = false
 	statusLbl.Parent = sc
 	premiumState.status = statusLbl
+
+	local premiumGuide = guideCard(sc, "Cara menggunakan", "1. Tempel key Premium Anda.\n2. Tekan Verifikasi.\n3. Pilih game setelah akses terbuka.")
 
 	local gameWrap = Instance.new("Frame")
 	gameWrap.BackgroundTransparency = 1
@@ -969,11 +1040,12 @@ do
 
 	gameGrid(gameWrap, GAMES_PREMIUM, premiumState.selected, premiumState.buttons, function() end)
 
-	local loadBtn = primaryButton(gameWrap, "Load Premium Script  ▶")
+	local loadBtn = primaryButton(gameWrap, "Jalankan Script Premium")
 	loadBtn.LayoutOrder = 99
 
 	checkBtn.MouseButton1Click:Connect(function()
 		local key = keyBox.Text
+		statusLbl.Visible = true
 		statusLbl.Text = "⏳ ngecek..."
 		statusLbl.TextColor3 = T.dim
 		tween(keyStroke, { Color = T.primary }, 0.15)
@@ -981,20 +1053,22 @@ do
 		local okR, msgR = redeemKey(key)
 		if okR then
 			premiumState.unlocked = true
+			premiumGuide.Visible = false
 			statusLbl.Text = "✓ " .. msgR
 			statusLbl.TextColor3 = T.success
 			gameWrap.Visible = true
 			tween(checkBtn, { BackgroundColor3 = T.success }, 0.2)
-			checkBtn.Text = "Valid ✓"
+			checkBtn.Text = "Terverifikasi"
 			notify("Keys valid", "premium kebuka, pilih game lalu load", true)
 		else
 			local ok, msg = checkPremiumKey(key)
 			if ok and string.find(msgR, "already redeemed") then
 				premiumState.unlocked = true
+				premiumGuide.Visible = false
 				statusLbl.Text = "✓ " .. msg .. " (welcome back)"
 				statusLbl.TextColor3 = T.success
 				gameWrap.Visible = true
-				checkBtn.Text = "Valid ✓"
+				checkBtn.Text = "Terverifikasi"
 				notify("Keys valid", "welcome back", true)
 			else
 				premiumState.unlocked = false
@@ -1033,48 +1107,47 @@ local freeState = {
 }
 do
 	local sc = getScroll(freePage)
-	sectionTitle(sc, "Free Access")
+	sectionTitle(sc, "Akses Gratis")
 
 	local card = Instance.new("Frame")
 	card.BackgroundColor3 = T.surface2
-	card.Size = UDim2.new(1, 0, 0, 68)
+	card.Size = UDim2.new(1, 0, 0, 84)
 	card.BorderSizePixel = 0
 	card.ZIndex = 6
 	card.Parent = sc
 	corner(card, UDim.new(0, 12))
-	local cardStroke = stroke(card, T.border, 1, 0.3)
-	pad(card, 12, 9, 12, 9)
-	hoverGlow(card, T.surface2, cardStroke, T.border, T.borderLight)
+	stroke(card, T.border, 1, 0.52)
+	pad(card, 16, 14, 16, 14)
 
 	local t1 = Instance.new("TextLabel")
 	t1.BackgroundTransparency = 1
 	t1.Size = UDim2.new(1, -96, 0, 15)
 	t1.Font = Enum.Font.GothamBold
-	t1.TextSize = 15
+	t1.TextSize = 16
 	t1.TextColor3 = T.text
 	t1.TextXAlignment = Enum.TextXAlignment.Left
-	t1.Text = "Free Hub"
+	t1.Text = "Akses Free"
 	t1.Parent = card
 
 	local t2 = Instance.new("TextLabel")
 	t2.BackgroundTransparency = 1
-	t2.Position = UDim2.fromOffset(0, 21)
-	t2.Size = UDim2.new(1, -104, 0, 14)
+	t2.Position = UDim2.fromOffset(0, 25)
+	t2.Size = UDim2.new(1, -116, 0, 16)
 	t2.Font = Enum.Font.Gotham
-	t2.TextSize = 12
+	t2.TextSize = 13
 	t2.TextColor3 = T.muted
 	t2.TextXAlignment = Enum.TextXAlignment.Left
-	t2.Text = "langsung confirm, gak perlu keys"
+	t2.Text = "Konfirmasi untuk melihat game yang tersedia."
 	t2.Parent = card
 
 	local confirmBtn = Instance.new("TextButton")
 	confirmBtn.BackgroundColor3 = T.surface
-	confirmBtn.Size = UDim2.fromOffset(96, 34)
-	confirmBtn.Position = UDim2.new(1, -96, 0.5, -17)
+	confirmBtn.Size = UDim2.fromOffset(106, 40)
+	confirmBtn.Position = UDim2.new(1, -106, 0.5, -20)
 	confirmBtn.Font = Enum.Font.GothamBold
-	confirmBtn.TextSize = 12
+	confirmBtn.TextSize = 14
 	confirmBtn.TextColor3 = T.dim
-	confirmBtn.Text = "Confirm"
+	confirmBtn.Text = "Buka Game"
 	confirmBtn.AutoButtonColor = false
 	confirmBtn.BorderSizePixel = 0
 	confirmBtn.ZIndex = 7
@@ -1082,6 +1155,8 @@ do
 	corner(confirmBtn, UDim.new(0, 8))
 	local confirmStroke = stroke(confirmBtn, T.border, 1, 0.4)
 	ripple(confirmBtn, Color3.new(1, 1, 1))
+
+	local freeGuide = guideCard(sc, "Mode Free", "1. Tekan Buka Game untuk membuka daftar game.\n2. Pilih game yang ingin dimainkan.\n3. Jalankan script dari tombol di bawah.")
 
 	local gameWrapFree = Instance.new("Frame")
 	gameWrapFree.BackgroundTransparency = 1
@@ -1097,7 +1172,7 @@ do
 
 	gameGrid(gameWrapFree, GAMES_FREE, freeState.selected, freeState.buttons, function() end)
 
-	local loadFree = primaryButton(gameWrapFree, "Load Free Script  ▶")
+	local loadFree = primaryButton(gameWrapFree, "Jalankan Script Free")
 	loadFree.LayoutOrder = 99
 
 	confirmBtn.MouseButton1Click:Connect(function()
@@ -1108,7 +1183,8 @@ do
 			TextColor3 = if on then Color3.new(1, 1, 1) else T.dim,
 		}, 0.15)
 		tween(confirmStroke, { Color = if on then T.success else T.border }, 0.15)
-		confirmBtn.Text = if on then "Confirmed ✓" else "Confirm"
+		confirmBtn.Text = if on then "Terbuka ✓" else "Buka Game"
+		freeGuide.Visible = not on
 		gameWrapFree.Visible = on
 		if on then notify("Free confirmed", "pilih game lalu load", true) end
 	end)
@@ -1142,9 +1218,8 @@ do
 		c.ZIndex = 6
 		c.Parent = sc
 		corner(c, UDim.new(0, 12))
-		local st = stroke(c, T.border, 1, 0.32)
+		stroke(c, T.border, 1, 0.56)
 		pad(c, 12, 9, 12, 9)
-		hoverGlow(c, T.surface2, st, T.border, T.borderLight)
 		local a = Instance.new("TextLabel")
 		a.BackgroundTransparency = 1
 		a.Size = UDim2.new(1, 0, 0, 18)
