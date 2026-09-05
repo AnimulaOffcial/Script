@@ -1,8 +1,8 @@
 --!strict
--- ANIMULA HUB v3 - standalone loader UI (premium edition)
--- 100% self-contained: TANPA require ke LoaderUI / ComponentsUI manapun.
+-- ANIMULA HUB - standalone loader interface
+-- The runtime UI is fully self-contained in this file.
 -- execute: loadstring(game:HttpGet("https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/LoaderScript.lua"))()
--- tabs: Premium (supabase keys) / Free (confirm + game list) / Info
+-- tabs: Premium / Freemium / Free / Info
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -176,10 +176,10 @@ local function hoverGlow(obj: GuiObject, normalBg: Color3, strokeObj: UIStroke?,
 	end)
 end
 
--- supabase via RPC (anti bobol: anon cuma bisa check/redeem)
+-- Supabase RPC access: the client can only check and redeem a key.
 local function checkKeyViaRpc(key: string): (boolean, string)
-	if key == "" then return false, "key kosong" end
-	if #key < 10 then return false, "key kosong" end
+	if key == "" then return false, "A key is required." end
+	if #key < 10 then return false, "The key is too short." end
 	local fn: any = (request or http_request or (syn and syn.request) or (http and http.request))
 	if fn then
 		local ok, res = pcall(function()
@@ -198,18 +198,15 @@ local function checkKeyViaRpc(key: string): (boolean, string)
 			local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
 			if ok2 and data then
 				if data.ok then
-					local dl: string = if data.days_left == nil then "unlimited" else tostring(data.days_left) .. " hari"
+					local dl: string = if data.days_left == nil then "unlimited" else tostring(data.days_left) .. " days"
 					return true, "valid (" .. dl .. ")"
 				else
-					return false, data.error or "tidak valid"
+					return false, data.error or "The key is invalid."
 				end
 			end
 		end
 	end
-	if string.match(key, "^Animula%-(pk|fk)%-[A-Za-z0-9][A-Za-z0-9][A-Za-z0-9]") and #key >= 34 then
-		return true, "valid (offline)"
-	end
-	return false, "gagal cek, cek internet / format key"
+	return false, "Unable to verify the key."
 end
 
 local function checkPremiumKey(key: string): (boolean, string)
@@ -219,9 +216,9 @@ end
 local function redeemKey(key: string): (boolean, string)
 	local uid: number = LocalPlayer and LocalPlayer.UserId or 0
 	local uname: string = LocalPlayer and LocalPlayer.Name or ""
-	if uid <= 0 then return false, "userId tidak ketemu" end
+	if uid <= 0 then return false, "Roblox user ID is unavailable." end
 	local fn: any = (request or http_request or (syn and syn.request) or (http and http.request))
-	if not fn then return false, "executor tidak support http" end
+	if not fn then return false, "The executor does not support HTTP requests." end
 	local ok, res = pcall(function()
 		return fn({
 			Url = SUPABASE_URL .. "/rest/v1/rpc/animula_redeem_key",
@@ -242,29 +239,29 @@ local function redeemKey(key: string): (boolean, string)
 	if ok and res and res.StatusCode and res.StatusCode >= 200 and res.StatusCode < 300 then
 		local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
 		if ok2 and data then
-			if data.ok then return true, data.message or "redeemed" else return false, data.error or "gagal redeem" end
+			if data.ok then return true, data.message or "Redeemed." else return false, data.error or "Unable to redeem the key." end
 		end
 	end
-	return false, "gagal redeem, cek internet"
+	return false, "Unable to redeem the key."
 end
 
 local function loadGameScript(gameName: string, tier: string): (boolean, string)
 	local base = "https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/MenuScript/" .. tier .. "/Game/" .. gameName .. "/" .. gameName .. "Loader.lua"
 	local ok, result = pcall(function()
 		if type(loadstring) ~= "function" then
-			error("executor tidak mendukung loadstring")
+			error("The executor does not support loadstring.")
 		end
 		local code = game:HttpGet(base)
 		if type(code) ~= "string" or #code <= 10 then
-			error("script game kosong atau tidak ditemukan")
+			error("The game script is empty or unavailable.")
 		end
 		local chunk, compileError = loadstring(code)
-		if not chunk then error(compileError or "script game tidak valid") end
+		if not chunk then error(compileError or "The game script is invalid.") end
 		chunk()
 	end)
 	if not ok then
 		local message = tostring(result)
-		warn("[Animula] gagal load " .. gameName .. ": " .. message)
+		warn("[Animula] failed to load " .. gameName .. ": " .. message)
 		return false, message
 	end
 	return true, "loaded"
@@ -289,6 +286,8 @@ local GAMES_PREMIUM = {
 	"ToiletTowerDefense", "TowerDefenseSimulator", "TowerOfHell", "UntitledBoxingGame", "WelcomeToBloxburg",
 }
 
+-- Legacy loader layout retained only for source history. The runtime UI below is standalone.
+if false then
 -- bersihkan loader lama kalau ada (anti duplikat)
 do
 	local hui0 = getHui()
@@ -1295,3 +1294,736 @@ tween(main, { BackgroundTransparency = 0 }, 0.22)
 switchTab("Free")
 switchTab("Premium")
 print("[Animula Loader] v3 ready - Premium / Free / Info")
+end
+
+-- Standalone loader UI. This is the only runtime interface in this file.
+do
+    local function clearPreviousLoader()
+        local root = getHui()
+        for _, child in ipairs(root:GetChildren()) do
+            if child:IsA("ScreenGui") and child.Name == "AnimulaLoader" then
+                pcall(function() child:Destroy() end)
+            end
+        end
+    end
+
+    clearPreviousLoader()
+
+    local root = getHui()
+    local loaderGui = Instance.new("ScreenGui")
+    loaderGui.Name = "AnimulaLoader"
+    loaderGui.ResetOnSpawn = false
+    loaderGui.IgnoreGuiInset = true
+    loaderGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    loaderGui.DisplayOrder = 20
+    loaderGui.Parent = root
+
+    local glowLayer = Instance.new("Frame")
+    glowLayer.Name = "CornerGlowLayer"
+    glowLayer.BackgroundTransparency = 1
+    glowLayer.AnchorPoint = Vector2.new(0.5, 0.5)
+    glowLayer.Position = UDim2.fromScale(0.5, 0.5)
+    glowLayer.Size = UDim2.fromOffset(630, 440)
+    glowLayer.ZIndex = 1
+    glowLayer.Parent = loaderGui
+
+    local function makeCornerGlow(position: UDim2)
+        local glow = Instance.new("ImageLabel")
+        glow.Name = "CornerGlow"
+        glow.BackgroundTransparency = 1
+        glow.Image = "rbxassetid://5028857084"
+        glow.ImageColor3 = T.primary
+        glow.ImageTransparency = 0.16
+        glow.ScaleType = Enum.ScaleType.Slice
+        glow.SliceCenter = Rect.new(24, 24, 276, 276)
+        glow.AnchorPoint = Vector2.new(0.5, 0.5)
+        glow.Position = position
+        glow.Size = UDim2.fromOffset(96, 96)
+        glow.ZIndex = 1
+        glow.Parent = glowLayer
+    end
+
+    makeCornerGlow(UDim2.fromOffset(0, 0))
+    makeCornerGlow(UDim2.new(1, 0, 0, 0))
+    makeCornerGlow(UDim2.new(0, 0, 1, 0))
+    makeCornerGlow(UDim2.fromScale(1, 1))
+
+    local main = Instance.new("Frame")
+    main.Name = "Main"
+    main.BackgroundColor3 = T.surface
+    main.BorderSizePixel = 0
+    main.AnchorPoint = Vector2.new(0.5, 0.5)
+    main.Position = UDim2.fromScale(0.5, 0.5)
+    main.Size = UDim2.fromOffset(630, 440)
+    main.ClipsDescendants = true
+    main.ZIndex = 5
+    main.Parent = loaderGui
+    corner(main, UDim.new(0, 16))
+    stroke(main, T.primary, 1.8, 0.12)
+
+    local function edge(position: UDim2, size: UDim2)
+        local line = Instance.new("Frame")
+        line.BackgroundColor3 = T.secondary
+        line.BackgroundTransparency = 0.22
+        line.Position = position
+        line.Size = size
+        line.BorderSizePixel = 0
+        line.ZIndex = 7
+        line.Parent = main
+        corner(line, UDim.new(1, 0))
+    end
+
+    edge(UDim2.fromOffset(18, 2), UDim2.new(1, -36, 0, 1))
+    edge(UDim2.new(0, 18, 1, -3), UDim2.new(1, -36, 0, 1))
+    edge(UDim2.fromOffset(2, 18), UDim2.new(0, 1, 1, -36))
+    edge(UDim2.new(1, -3, 0, 18), UDim2.new(0, 1, 1, -36))
+
+    local header = Instance.new("Frame")
+    header.Name = "Header"
+    header.BackgroundTransparency = 1
+    header.Size = UDim2.new(1, 0, 0, 68)
+    header.ZIndex = 8
+    header.Parent = main
+
+    local logo = Instance.new("Frame")
+    logo.BackgroundColor3 = T.primary
+    logo.BorderSizePixel = 0
+    logo.Position = UDim2.fromOffset(18, 14)
+    logo.Size = UDim2.fromOffset(40, 40)
+    logo.ZIndex = 9
+    logo.Parent = header
+    corner(logo, UDim.new(0, 12))
+    stroke(logo, T.accent, 1, 0.18)
+
+    local logoText = Instance.new("TextLabel")
+    logoText.BackgroundTransparency = 1
+    logoText.Size = UDim2.fromScale(1, 1)
+    logoText.Font = Enum.Font.GothamBold
+    logoText.TextSize = 18
+    logoText.TextColor3 = Color3.new(1, 1, 1)
+    logoText.Text = "A"
+    logoText.ZIndex = 10
+    logoText.Parent = logo
+
+    local title = Instance.new("TextLabel")
+    title.BackgroundTransparency = 1
+    title.Position = UDim2.fromOffset(72, 21)
+    title.Size = UDim2.new(1, -132, 0, 26)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 22
+    title.TextColor3 = T.text
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.TextTruncate = Enum.TextTruncate.AtEnd
+    title.Text = "Animula Hub"
+    title.ZIndex = 9
+    title.Parent = header
+
+    local closeButton = Instance.new("TextButton")
+    closeButton.BackgroundColor3 = T.surface2
+    closeButton.BorderSizePixel = 0
+    closeButton.Position = UDim2.new(1, -46, 0, 20)
+    closeButton.Size = UDim2.fromOffset(28, 28)
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.TextSize = 16
+    closeButton.TextColor3 = T.dim
+    closeButton.Text = "X"
+    closeButton.AutoButtonColor = false
+    closeButton.ZIndex = 9
+    closeButton.Parent = header
+    corner(closeButton, UDim.new(0, 8))
+    local closeStroke = stroke(closeButton, T.border, 1, 0.55)
+    closeButton.MouseEnter:Connect(function()
+        tween(closeButton, { BackgroundColor3 = T.error, TextColor3 = Color3.new(1, 1, 1) }, 0.12)
+        tween(closeStroke, { Color = T.error }, 0.12)
+    end)
+    closeButton.MouseLeave:Connect(function()
+        tween(closeButton, { BackgroundColor3 = T.surface2, TextColor3 = T.dim }, 0.12)
+        tween(closeStroke, { Color = T.border }, 0.12)
+    end)
+    closeButton.MouseButton1Click:Connect(function()
+        loaderGui:Destroy()
+    end)
+
+    local divider = Instance.new("Frame")
+    divider.BackgroundColor3 = T.border
+    divider.BackgroundTransparency = 0.42
+    divider.Position = UDim2.fromOffset(14, 68)
+    divider.Size = UDim2.new(1, -28, 0, 1)
+    divider.BorderSizePixel = 0
+    divider.ZIndex = 8
+    divider.Parent = main
+
+    local sidebar = Instance.new("Frame")
+    sidebar.Name = "Sidebar"
+    sidebar.BackgroundColor3 = T.bg
+    sidebar.BackgroundTransparency = 0.12
+    sidebar.Position = UDim2.fromOffset(14, 82)
+    sidebar.Size = UDim2.new(0, 152, 1, -96)
+    sidebar.BorderSizePixel = 0
+    sidebar.ZIndex = 8
+    sidebar.Parent = main
+    corner(sidebar, UDim.new(0, 12))
+    stroke(sidebar, T.border, 1, 0.5)
+
+    local navLabel = Instance.new("TextLabel")
+    navLabel.BackgroundTransparency = 1
+    navLabel.Position = UDim2.fromOffset(13, 13)
+    navLabel.Size = UDim2.new(1, -26, 0, 16)
+    navLabel.Font = Enum.Font.GothamBold
+    navLabel.TextSize = 11
+    navLabel.TextColor3 = T.muted
+    navLabel.TextXAlignment = Enum.TextXAlignment.Left
+    navLabel.Text = "NAVIGATION"
+    navLabel.ZIndex = 9
+    navLabel.Parent = sidebar
+
+    local content = Instance.new("Frame")
+    content.Name = "Content"
+    content.BackgroundTransparency = 1
+    content.Position = UDim2.fromOffset(182, 82)
+    content.Size = UDim2.new(1, -198, 1, -96)
+    content.ZIndex = 8
+    content.Parent = main
+
+    local pages: { [string]: Frame } = {}
+    local tabButtons: { [string]: { button: TextButton, indicator: Frame, stroke: UIStroke } } = {}
+    local activeTab = "Premium"
+
+    local function toast(titleText: string, message: string, success: boolean)
+        local toastFrame = Instance.new("Frame")
+        toastFrame.BackgroundColor3 = if success then Color3.fromRGB(18, 61, 47) else Color3.fromRGB(68, 35, 44)
+        toastFrame.BackgroundTransparency = 0.05
+        toastFrame.AnchorPoint = Vector2.new(0.5, 1)
+        toastFrame.Position = UDim2.new(0.5, 0, 1, -10)
+        toastFrame.Size = UDim2.new(1, -8, 0, 52)
+        toastFrame.BorderSizePixel = 0
+        toastFrame.ZIndex = 30
+        toastFrame.Parent = content
+        corner(toastFrame, UDim.new(0, 10))
+        stroke(toastFrame, if success then T.success else T.error, 1, 0.28)
+
+        local toastTitle = Instance.new("TextLabel")
+        toastTitle.BackgroundTransparency = 1
+        toastTitle.Position = UDim2.fromOffset(12, 7)
+        toastTitle.Size = UDim2.new(1, -24, 0, 16)
+        toastTitle.Font = Enum.Font.GothamBold
+        toastTitle.TextSize = 13
+        toastTitle.TextColor3 = T.text
+        toastTitle.TextXAlignment = Enum.TextXAlignment.Left
+        toastTitle.Text = titleText
+        toastTitle.ZIndex = 31
+        toastTitle.Parent = toastFrame
+
+        local toastMessage = Instance.new("TextLabel")
+        toastMessage.BackgroundTransparency = 1
+        toastMessage.Position = UDim2.fromOffset(12, 25)
+        toastMessage.Size = UDim2.new(1, -24, 0, 16)
+        toastMessage.Font = Enum.Font.Gotham
+        toastMessage.TextSize = 12
+        toastMessage.TextColor3 = T.dim
+        toastMessage.TextXAlignment = Enum.TextXAlignment.Left
+        toastMessage.Text = message
+        toastMessage.ZIndex = 31
+        toastMessage.Parent = toastFrame
+
+        task.delay(3, function()
+            if toastFrame.Parent then toastFrame:Destroy() end
+        end)
+    end
+
+    local function makePage(name: string): ScrollingFrame
+        local page = Instance.new("Frame")
+        page.Name = name
+        page.BackgroundTransparency = 1
+        page.Size = UDim2.fromScale(1, 1)
+        page.Visible = false
+        page.ZIndex = 8
+        page.Parent = content
+
+        local scroll = Instance.new("ScrollingFrame")
+        scroll.Name = "Scroll"
+        scroll.BackgroundTransparency = 1
+        scroll.Size = UDim2.fromScale(1, 1)
+        scroll.CanvasSize = UDim2.fromOffset(0, 0)
+        scroll.ScrollBarThickness = 2
+        scroll.ScrollBarImageColor3 = T.primary
+        scroll.BorderSizePixel = 0
+        scroll.ZIndex = 8
+        scroll.Parent = page
+        pad(scroll, 2, 2, 2, 12)
+
+        local list = Instance.new("UIListLayout")
+        list.FillDirection = Enum.FillDirection.Vertical
+        list.SortOrder = Enum.SortOrder.LayoutOrder
+        list.Padding = UDim.new(0, 10)
+        list.Parent = scroll
+        list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            scroll.CanvasSize = UDim2.fromOffset(0, list.AbsoluteContentSize.Y + 14)
+        end)
+
+        pages[name] = page
+        return scroll
+    end
+
+    local function addPageTitle(parent: Instance, heading: string, description: string)
+        local holder = Instance.new("Frame")
+        holder.BackgroundTransparency = 1
+        holder.Size = UDim2.new(1, 0, 0, 48)
+        holder.ZIndex = 8
+        holder.Parent = parent
+
+        local headingLabel = Instance.new("TextLabel")
+        headingLabel.BackgroundTransparency = 1
+        headingLabel.Size = UDim2.new(1, 0, 0, 23)
+        headingLabel.Font = Enum.Font.GothamBold
+        headingLabel.TextSize = 19
+        headingLabel.TextColor3 = T.text
+        headingLabel.TextXAlignment = Enum.TextXAlignment.Left
+        headingLabel.Text = heading
+        headingLabel.ZIndex = 9
+        headingLabel.Parent = holder
+
+        local descLabel = Instance.new("TextLabel")
+        descLabel.BackgroundTransparency = 1
+        descLabel.Position = UDim2.fromOffset(0, 26)
+        descLabel.Size = UDim2.new(1, 0, 0, 17)
+        descLabel.Font = Enum.Font.Gotham
+        descLabel.TextSize = 13
+        descLabel.TextColor3 = T.muted
+        descLabel.TextXAlignment = Enum.TextXAlignment.Left
+        descLabel.Text = description
+        descLabel.ZIndex = 9
+        descLabel.Parent = holder
+    end
+
+    local function makeCard(parent: Instance, height: number): Frame
+        local card = Instance.new("Frame")
+        card.BackgroundColor3 = T.surface2
+        card.Size = UDim2.new(1, 0, 0, height)
+        card.BorderSizePixel = 0
+        card.ZIndex = 8
+        card.Parent = parent
+        corner(card, UDim.new(0, 12))
+        stroke(card, T.border, 1, 0.52)
+        return card
+    end
+
+    local function label(parent: Instance, text: string, position: UDim2, size: UDim2, textSize: number, color: Color3, bold: boolean): TextLabel
+        local item = Instance.new("TextLabel")
+        item.BackgroundTransparency = 1
+        item.Position = position
+        item.Size = size
+        item.Font = if bold then Enum.Font.GothamBold else Enum.Font.Gotham
+        item.TextSize = textSize
+        item.TextColor3 = color
+        item.TextXAlignment = Enum.TextXAlignment.Left
+        item.TextYAlignment = Enum.TextYAlignment.Top
+        item.TextWrapped = true
+        item.Text = text
+        item.ZIndex = 9
+        item.Parent = parent
+        return item
+    end
+
+    local function showTab(name: string)
+        activeTab = name
+        for tabName, page in pairs(pages) do
+            page.Visible = tabName == name
+        end
+        for tabName, state in pairs(tabButtons) do
+            local selected = tabName == name
+            tween(state.button, {
+                BackgroundColor3 = if selected then T.surfaceHover else T.surface2,
+                BackgroundTransparency = if selected then 0 else 0.35,
+                TextColor3 = if selected then T.text else T.dim,
+            }, 0.15)
+            tween(state.stroke, {
+                Color = if selected then T.primary else T.border,
+                Transparency = if selected then 0.08 else 0.78,
+            }, 0.15)
+            tween(state.indicator, { BackgroundTransparency = if selected then 0 else 1 }, 0.15)
+        end
+    end
+
+    local function makeTab(name: string, order: number)
+        local button = Instance.new("TextButton")
+        button.Name = name
+        button.BackgroundColor3 = T.surface2
+        button.BackgroundTransparency = 0.35
+        button.Position = UDim2.fromOffset(7, 40 + (order - 1) * 48)
+        button.Size = UDim2.new(1, -14, 0, 42)
+        button.BorderSizePixel = 0
+        button.AutoButtonColor = false
+        button.Font = Enum.Font.GothamSemibold
+        button.TextSize = 14
+        button.TextColor3 = T.dim
+        button.TextXAlignment = Enum.TextXAlignment.Left
+        button.Text = name
+        button.ZIndex = 9
+        button.Parent = sidebar
+        corner(button, UDim.new(0, 9))
+        local tabStroke = stroke(button, T.border, 1, 0.78)
+        pad(button, 22, 0, 10, 0)
+
+        local indicator = Instance.new("Frame")
+        indicator.Name = "ActiveIndicator"
+        indicator.BackgroundColor3 = T.secondary
+        indicator.BackgroundTransparency = 1
+        indicator.Position = UDim2.fromOffset(7, 10)
+        indicator.Size = UDim2.fromOffset(3, 20)
+        indicator.BorderSizePixel = 0
+        indicator.ZIndex = 10
+        indicator.Parent = button
+        corner(indicator, UDim.new(1, 0))
+
+        button.MouseEnter:Connect(function()
+            if activeTab ~= name then tween(button, { BackgroundColor3 = T.surfaceHover }, 0.12) end
+        end)
+        button.MouseLeave:Connect(function()
+            if activeTab ~= name then tween(button, { BackgroundColor3 = T.surface2 }, 0.12) end
+        end)
+        button.MouseButton1Click:Connect(function()
+            showTab(name)
+        end)
+        tabButtons[name] = { button = button, indicator = indicator, stroke = tabStroke }
+    end
+
+    local function verifyAccess(key: string): boolean
+        local valid = checkPremiumKey(key)
+        if not valid then return false end
+        local redeemed = redeemKey(key)
+        return redeemed
+    end
+
+    local function makeGameList(parent: Instance, games: { string }, tier: string): Frame
+        local wrap = Instance.new("Frame")
+        wrap.Name = "GameList"
+        wrap.BackgroundTransparency = 1
+        wrap.Size = UDim2.new(1, 0, 0, 0)
+        wrap.AutomaticSize = Enum.AutomaticSize.Y
+        wrap.Visible = false
+        wrap.ZIndex = 8
+        wrap.Parent = parent
+
+        local list = Instance.new("UIListLayout")
+        list.FillDirection = Enum.FillDirection.Vertical
+        list.SortOrder = Enum.SortOrder.LayoutOrder
+        list.Padding = UDim.new(0, 10)
+        list.Parent = wrap
+
+        local listTitle = label(wrap, "Available games", UDim2.fromOffset(2, 0), UDim2.new(1, -2, 0, 20), 15, T.accent, true)
+        listTitle.LayoutOrder = 1
+
+        local grid = Instance.new("Frame")
+        grid.BackgroundTransparency = 1
+        local rows = math.ceil(#games / 2)
+        grid.Size = UDim2.new(1, 0, 0, rows * 38 + math.max(0, rows - 1) * 8)
+        grid.LayoutOrder = 2
+        grid.ZIndex = 8
+        grid.Parent = wrap
+
+        local gridLayout = Instance.new("UIGridLayout")
+        gridLayout.CellSize = UDim2.fromOffset(206, 38)
+        gridLayout.CellPadding = UDim2.fromOffset(8, 8)
+        gridLayout.FillDirectionMaxCells = 2
+        gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        gridLayout.Parent = grid
+
+        local selected = { value = nil :: string? }
+        local buttons: { [string]: TextButton } = {}
+        for _, gameName in ipairs(games) do
+            local gameButton = Instance.new("TextButton")
+            gameButton.Name = gameName
+            gameButton.BackgroundColor3 = T.surface
+            gameButton.BorderSizePixel = 0
+            gameButton.Font = Enum.Font.Gotham
+            gameButton.TextSize = 13
+            gameButton.TextColor3 = T.dim
+            gameButton.TextTruncate = Enum.TextTruncate.AtEnd
+            gameButton.Text = gameName
+            gameButton.AutoButtonColor = false
+            gameButton.ZIndex = 9
+            gameButton.Parent = grid
+            corner(gameButton, UDim.new(0, 8))
+            local gameStroke = stroke(gameButton, T.border, 1, 0.62)
+            gameButton.MouseEnter:Connect(function()
+                if selected.value ~= gameName then tween(gameButton, { BackgroundColor3 = T.surfaceHover }, 0.12) end
+            end)
+            gameButton.MouseLeave:Connect(function()
+                if selected.value ~= gameName then tween(gameButton, { BackgroundColor3 = T.surface }, 0.12) end
+            end)
+            gameButton.MouseButton1Click:Connect(function()
+                selected.value = gameName
+                for name, item in pairs(buttons) do
+                    local isSelected = name == gameName
+                    tween(item, {
+                        BackgroundColor3 = if isSelected then T.primary else T.surface,
+                        TextColor3 = if isSelected then Color3.new(1, 1, 1) else T.dim,
+                    }, 0.14)
+                    local itemStroke = item:FindFirstChildOfClass("UIStroke")
+                    if itemStroke then tween(itemStroke, { Color = if isSelected then T.accent else T.border }, 0.14) end
+                end
+            end)
+            buttons[gameName] = gameButton
+            gameStroke.Transparency = 0.62
+        end
+
+        local launch = Instance.new("TextButton")
+        launch.BackgroundColor3 = T.primary
+        launch.BorderSizePixel = 0
+        launch.Size = UDim2.new(1, 0, 0, 40)
+        launch.Font = Enum.Font.GothamBold
+        launch.TextSize = 14
+        launch.TextColor3 = Color3.new(1, 1, 1)
+        launch.Text = "Launch selected game"
+        launch.AutoButtonColor = false
+        launch.ZIndex = 9
+        launch.LayoutOrder = 3
+        launch.Parent = wrap
+        corner(launch, UDim.new(0, 9))
+        stroke(launch, T.borderLight, 1, 0.45)
+        launch.MouseEnter:Connect(function() tween(launch, { BackgroundColor3 = T.secondary }, 0.12) end)
+        launch.MouseLeave:Connect(function() tween(launch, { BackgroundColor3 = T.primary }, 0.12) end)
+        launch.MouseButton1Click:Connect(function()
+            if not selected.value then
+                toast("Select a game", "Choose a game before launching.", false)
+                return
+            end
+            task.spawn(function()
+                local loaded, message = loadGameScript(selected.value :: string, tier)
+                if loaded then
+                    loaderGui:Destroy()
+                else
+                    toast("Launch failed", "The selected game script is not available.", false)
+                    warn("[Animula] " .. message)
+                end
+            end)
+        end)
+        return wrap
+    end
+
+    local function makeLockedState(parent: Instance, titleText: string, message: string): Frame
+        local state = makeCard(parent, 104)
+        state.Name = "LockedState"
+        label(state, titleText, UDim2.fromOffset(16, 15), UDim2.new(1, -32, 0, 20), 16, T.text, true)
+        label(state, message, UDim2.fromOffset(16, 42), UDim2.new(1, -32, 0, 34), 13, T.dim, false)
+        return state
+    end
+
+    local function makeKeyPage(name: string, description: string, games: { string }, tier: string)
+        local scroll = makePage(name)
+        addPageTitle(scroll, name, description)
+
+        local accessCard = makeCard(scroll, 142)
+        accessCard.Name = "KeyAccess"
+        accessCard.LayoutOrder = 2
+        label(accessCard, "License key", UDim2.fromOffset(16, 13), UDim2.new(1, -32, 0, 20), 16, T.text, true)
+        label(accessCard, "Enter the key assigned to your account.", UDim2.fromOffset(16, 39), UDim2.new(1, -32, 0, 16), 13, T.dim, false)
+
+        local keyBox = Instance.new("TextBox")
+        keyBox.Name = "KeyInput"
+        keyBox.BackgroundColor3 = T.bg
+        keyBox.BorderSizePixel = 0
+        keyBox.ClearTextOnFocus = false
+        keyBox.PlaceholderColor3 = T.muted
+        keyBox.PlaceholderText = "Paste your key here"
+        keyBox.Position = UDim2.fromOffset(16, 66)
+        keyBox.Size = UDim2.new(1, -142, 0, 40)
+        keyBox.Font = Enum.Font.Gotham
+        keyBox.TextSize = 14
+        keyBox.TextColor3 = T.text
+        keyBox.TextXAlignment = Enum.TextXAlignment.Left
+        keyBox.Text = ""
+        keyBox.ZIndex = 10
+        keyBox.Parent = accessCard
+        corner(keyBox, UDim.new(0, 9))
+        local inputStroke = stroke(keyBox, T.border, 1, 0.55)
+        pad(keyBox, 13, 0, 13, 0)
+        keyBox.Focused:Connect(function()
+            tween(inputStroke, { Color = T.secondary, Transparency = 0.08 }, 0.12)
+        end)
+        keyBox.FocusLost:Connect(function()
+            tween(inputStroke, { Color = T.border, Transparency = 0.55 }, 0.12)
+        end)
+
+        local verifyButton = Instance.new("TextButton")
+        verifyButton.Name = "VerifyKey"
+        verifyButton.BackgroundColor3 = T.primary
+        verifyButton.BorderSizePixel = 0
+        verifyButton.Position = UDim2.new(1, -110, 0, 66)
+        verifyButton.Size = UDim2.fromOffset(94, 40)
+        verifyButton.AutoButtonColor = false
+        verifyButton.Font = Enum.Font.GothamBold
+        verifyButton.TextSize = 14
+        verifyButton.TextColor3 = Color3.new(1, 1, 1)
+        verifyButton.Text = "Verify key"
+        verifyButton.ZIndex = 10
+        verifyButton.Parent = accessCard
+        corner(verifyButton, UDim.new(0, 9))
+        local verifyStroke = stroke(verifyButton, T.borderLight, 1, 0.42)
+        verifyButton.MouseEnter:Connect(function()
+            if verifyButton.Active then tween(verifyButton, { BackgroundColor3 = T.secondary }, 0.12) end
+        end)
+        verifyButton.MouseLeave:Connect(function()
+            if verifyButton.Active then tween(verifyButton, { BackgroundColor3 = T.primary }, 0.12) end
+        end)
+
+        local status = label(accessCard, "Enter a key to continue.", UDim2.fromOffset(16, 115), UDim2.new(1, -32, 0, 16), 13, T.muted, false)
+        status.TextYAlignment = Enum.TextYAlignment.Center
+
+        local lockedState = makeLockedState(scroll, "Premium content is locked", "Verify your key above to view supported games.")
+        lockedState.LayoutOrder = 3
+        local gameList = makeGameList(scroll, games, tier)
+        gameList.LayoutOrder = 4
+
+        local checking = false
+        verifyButton.MouseButton1Click:Connect(function()
+            if checking then return end
+            local key = string.gsub(keyBox.Text, "^%s*(.-)%s*$", "%1")
+            if key == "" then
+                status.Text = "Enter a key before verifying."
+                status.TextColor3 = T.error
+                return
+            end
+
+            checking = true
+            verifyButton.Active = false
+            verifyButton.Text = "Checking..."
+            tween(verifyButton, { BackgroundColor3 = T.primaryDark }, 0.12)
+            status.Text = "Checking your key..."
+            status.TextColor3 = T.dim
+
+            task.spawn(function()
+                local requestOk, allowed = pcall(verifyAccess, key)
+                if not loaderGui.Parent then return end
+                if requestOk and allowed then
+                    lockedState.Visible = false
+                    gameList.Visible = true
+                    keyBox.TextEditable = false
+                    verifyButton.Text = "Verified"
+                    verifyButton.BackgroundColor3 = T.success
+                    verifyStroke.Color = T.success
+                    status.Text = "Access verified. Select a game below."
+                    status.TextColor3 = T.success
+                    toast("Access verified", "Your game list is ready.", true)
+                    return
+                end
+
+                checking = false
+                verifyButton.Active = true
+                verifyButton.Text = "Verify key"
+                verifyButton.BackgroundColor3 = T.primary
+                status.Text = "Key could not be verified. Try again."
+                status.TextColor3 = T.error
+                toast("Verification failed", "Check the key and try again.", false)
+            end)
+        end)
+    end
+
+    local function makeFreePage()
+        local scroll = makePage("Free")
+        addPageTitle(scroll, "Free", "Confirm access to view Free games.")
+
+        local accessCard = makeCard(scroll, 126)
+        accessCard.Name = "FreeAccess"
+        accessCard.LayoutOrder = 2
+        label(accessCard, "Free access", UDim2.fromOffset(16, 15), UDim2.new(1, -32, 0, 20), 16, T.text, true)
+        label(accessCard, "No key is required for Free games.", UDim2.fromOffset(16, 42), UDim2.new(1, -32, 0, 16), 13, T.dim, false)
+
+        local confirmButton = Instance.new("TextButton")
+        confirmButton.Name = "ConfirmAccess"
+        confirmButton.BackgroundColor3 = T.primary
+        confirmButton.BorderSizePixel = 0
+        confirmButton.Position = UDim2.fromOffset(16, 70)
+        confirmButton.Size = UDim2.new(1, -32, 0, 40)
+        confirmButton.AutoButtonColor = false
+        confirmButton.Font = Enum.Font.GothamBold
+        confirmButton.TextSize = 14
+        confirmButton.TextColor3 = Color3.new(1, 1, 1)
+        confirmButton.Text = "Confirm access"
+        confirmButton.ZIndex = 10
+        confirmButton.Parent = accessCard
+        corner(confirmButton, UDim.new(0, 9))
+        local confirmStroke = stroke(confirmButton, T.borderLight, 1, 0.42)
+        confirmButton.MouseEnter:Connect(function()
+            if confirmButton.Active then tween(confirmButton, { BackgroundColor3 = T.secondary }, 0.12) end
+        end)
+        confirmButton.MouseLeave:Connect(function()
+            if confirmButton.Active then tween(confirmButton, { BackgroundColor3 = T.primary }, 0.12) end
+        end)
+
+        local lockedState = makeLockedState(scroll, "Free games are ready", "Confirm access above to view supported games.")
+        lockedState.LayoutOrder = 3
+        local gameList = makeGameList(scroll, GAMES_FREE, "Free")
+        gameList.LayoutOrder = 4
+
+        confirmButton.MouseButton1Click:Connect(function()
+            if not confirmButton.Active then return end
+            confirmButton.Active = false
+            confirmButton.Text = "Access confirmed"
+            confirmButton.BackgroundColor3 = T.success
+            confirmStroke.Color = T.success
+            lockedState.Visible = false
+            gameList.Visible = true
+            toast("Access confirmed", "Choose a Free game to continue.", true)
+        end)
+    end
+
+    local function makeInfoPage()
+        local scroll = makePage("Info")
+        addPageTitle(scroll, "Info", "Choose an access option to continue.")
+
+        local infoCard = makeCard(scroll, 104)
+        infoCard.LayoutOrder = 2
+        label(infoCard, "Animula Hub", UDim2.fromOffset(16, 15), UDim2.new(1, -32, 0, 20), 16, T.text, true)
+        label(infoCard, "Select Premium, Freemium, or Free from the navigation panel.", UDim2.fromOffset(16, 42), UDim2.new(1, -32, 0, 34), 13, T.dim, false)
+    end
+
+    makeKeyPage("Premium", "Verify your key to unlock Premium games.", GAMES_PREMIUM, "Premium")
+    makeKeyPage("Freemium", "Verify your key to unlock Freemium games.", GAMES_PREMIUM, "Premium")
+    makeFreePage()
+    makeInfoPage()
+
+    makeTab("Premium", 1)
+    makeTab("Freemium", 2)
+    makeTab("Free", 3)
+    makeTab("Info", 4)
+    showTab("Premium")
+
+    local dragging = false
+    local dragStart: Vector3? = nil
+    local windowStart: UDim2? = nil
+    header.Active = true
+    header.InputBegan:Connect(function(input: InputObject)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        if UserInputService:GetFocusedTextBox() then return end
+        dragging = true
+        dragStart = input.Position
+        windowStart = main.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end)
+
+    UserInputService.InputChanged:Connect(function(input: InputObject)
+        if not dragging or not dragStart or not windowStart then return end
+        if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        local delta = input.Position - dragStart
+        local position = UDim2.new(
+            windowStart.X.Scale,
+            windowStart.X.Offset + delta.X,
+            windowStart.Y.Scale,
+            windowStart.Y.Offset + delta.Y
+        )
+        main.Position = position
+        glowLayer.Position = position
+    end)
+
+    UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
+        if processed or input.KeyCode ~= Enum.KeyCode.RightShift then return end
+        local visible = not main.Visible
+        main.Visible = visible
+        glowLayer.Visible = visible
+    end)
+end
