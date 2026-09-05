@@ -1,7 +1,7 @@
 --!strict
 -- ANIMULA HUB v3 - standalone loader UI (premium edition)
 -- 100% self-contained: TANPA require ke LoaderUI / ComponentsUI manapun.
--- execute: loadstring(game:HttpGet("https://raw.githubusercontent.com/AnimulaOffcial/Script/main/LoaderScript.lua"))()
+-- execute: loadstring(game:HttpGet("https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/LoaderScript.lua"))()
 -- tabs: Premium (supabase keys) / Free (confirm + game list) / Info
 
 local Players = game:GetService("Players")
@@ -1207,7 +1207,7 @@ do
 	end
 
 	infoCard("Animula Hub v3", "Premium = keys via Supabase (bind Roblox ID). Free = confirm lalu load.")
-	infoCard("Execute Loader", 'loadstring(game:HttpGet("https://raw.githubusercontent.com/AnimulaOffcial/Script/main/LoaderScript.lua"))()')
+	infoCard("Execute Loader", 'loadstring(game:HttpGet("https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/LoaderScript.lua"))()')
 	infoCard("Support", "DM di discord kalau keys premium bermasalah.")
 
 	local discordBtn = primaryButton(sc, "Copy Discord Invite")
