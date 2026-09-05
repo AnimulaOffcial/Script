@@ -1320,22 +1320,80 @@ do
     corner(main, UDim.new(0, 16))
     stroke(main, T.primary, 1.8, 0.12)
 
-    local function edge(position: UDim2, size: UDim2)
+    local function edge(position: UDim2, size: UDim2, vertical: boolean)
         local line = Instance.new("Frame")
         line.BackgroundColor3 = T.secondary
-        line.BackgroundTransparency = 0.22
+        line.BackgroundTransparency = 0.1
         line.Position = position
         line.Size = size
         line.BorderSizePixel = 0
         line.ZIndex = 7
         line.Parent = main
         corner(line, UDim.new(1, 0))
+
+        local lineGradient = Instance.new("UIGradient")
+        lineGradient.Color = ColorSequence.new(T.secondary, T.accent)
+        lineGradient.Rotation = if vertical then 90 else 0
+        lineGradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.2),
+            NumberSequenceKeypoint.new(0.23, 0.2),
+            NumberSequenceKeypoint.new(0.24, 1),
+            NumberSequenceKeypoint.new(0.39, 1),
+            NumberSequenceKeypoint.new(0.4, 0.12),
+            NumberSequenceKeypoint.new(0.64, 0.12),
+            NumberSequenceKeypoint.new(0.65, 1),
+            NumberSequenceKeypoint.new(0.8, 1),
+            NumberSequenceKeypoint.new(0.81, 0.25),
+            NumberSequenceKeypoint.new(1, 0.25),
+        })
+        lineGradient.Parent = line
     end
 
-    edge(UDim2.fromOffset(18, 2), UDim2.new(1, -36, 0, 1))
-    edge(UDim2.new(0, 18, 1, -3), UDim2.new(1, -36, 0, 1))
-    edge(UDim2.fromOffset(2, 18), UDim2.new(0, 1, 1, -36))
-    edge(UDim2.new(1, -3, 0, 18), UDim2.new(0, 1, 1, -36))
+    edge(UDim2.fromOffset(18, 2), UDim2.fromOffset(42, 1), false)
+    edge(UDim2.new(1, -60, 0, 2), UDim2.fromOffset(42, 1), false)
+    edge(UDim2.new(0, 18, 1, -3), UDim2.fromOffset(42, 1), false)
+    edge(UDim2.new(1, -60, 1, -3), UDim2.fromOffset(42, 1), false)
+    edge(UDim2.fromOffset(2, 18), UDim2.fromOffset(1, 38), true)
+    edge(UDim2.new(1, -3, 0, 18), UDim2.fromOffset(1, 38), true)
+    edge(UDim2.new(0, 2, 1, -56), UDim2.fromOffset(1, 38), true)
+    edge(UDim2.new(1, -3, 1, -56), UDim2.fromOffset(1, 38), true)
+
+    local ambientLayer = Instance.new("Frame")
+    ambientLayer.Name = "AmbientTiles"
+    ambientLayer.BackgroundTransparency = 1
+    ambientLayer.Size = UDim2.fromScale(1, 1)
+    ambientLayer.BorderSizePixel = 0
+    ambientLayer.ClipsDescendants = true
+    ambientLayer.ZIndex = 6
+    ambientLayer.Parent = main
+
+    local tilePaths = {
+        { start = UDim2.fromOffset(194, 112), finish = UDim2.fromOffset(232, 142), size = 10, delay = 0.0 },
+        { start = UDim2.new(1, -84, 0, 108), finish = UDim2.new(1, -126, 0, 156), size = 14, delay = 0.35 },
+        { start = UDim2.fromOffset(208, 1), finish = UDim2.fromOffset(266, 18), size = 8, delay = 0.7 },
+        { start = UDim2.new(1, -70, 1, -58), finish = UDim2.new(1, -116, 1, -92), size = 12, delay = 1.05 },
+    }
+    for _, path in ipairs(tilePaths) do
+        local tile = Instance.new("Frame")
+        tile.BackgroundColor3 = T.secondary
+        tile.BackgroundTransparency = 0.8
+        tile.BorderSizePixel = 0
+        tile.Position = path.start
+        tile.Size = UDim2.fromOffset(path.size, path.size)
+        tile.Rotation = 18
+        tile.ZIndex = 6
+        tile.Parent = ambientLayer
+        corner(tile, UDim.new(0, 3))
+        stroke(tile, T.accent, 1, 0.64)
+        task.spawn(function()
+            task.wait(path.delay)
+            while tile.Parent do
+                tween(tile, { Position = path.finish, Rotation = -14, BackgroundTransparency = 0.65 }, 2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut).Completed:Wait()
+                if not tile.Parent then break end
+                tween(tile, { Position = path.start, Rotation = 18, BackgroundTransparency = 0.82 }, 2.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut).Completed:Wait()
+            end
+        end)
+    end
 
     local header = Instance.new("Frame")
     header.Name = "Header"
@@ -1514,7 +1572,7 @@ do
         local list = Instance.new("UIListLayout")
         list.FillDirection = Enum.FillDirection.Vertical
         list.SortOrder = Enum.SortOrder.LayoutOrder
-        list.Padding = UDim.new(0, 10)
+        list.Padding = UDim.new(0, 8)
         list.Parent = scroll
         list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             scroll.CanvasSize = UDim2.fromOffset(0, list.AbsoluteContentSize.Y + 14)
@@ -1527,15 +1585,15 @@ do
     local function addPageTitle(parent: Instance, heading: string, description: string)
         local holder = Instance.new("Frame")
         holder.BackgroundTransparency = 1
-        holder.Size = UDim2.new(1, 0, 0, 48)
+        holder.Size = UDim2.new(1, 0, 0, 44)
         holder.ZIndex = 8
         holder.Parent = parent
 
         local headingLabel = Instance.new("TextLabel")
         headingLabel.BackgroundTransparency = 1
-        headingLabel.Size = UDim2.new(1, 0, 0, 23)
+        headingLabel.Size = UDim2.new(1, 0, 0, 24)
         headingLabel.Font = Enum.Font.GothamBold
-        headingLabel.TextSize = 19
+        headingLabel.TextSize = 20
         headingLabel.TextColor3 = T.text
         headingLabel.TextXAlignment = Enum.TextXAlignment.Left
         headingLabel.Text = heading
@@ -1544,10 +1602,10 @@ do
 
         local descLabel = Instance.new("TextLabel")
         descLabel.BackgroundTransparency = 1
-        descLabel.Position = UDim2.fromOffset(0, 26)
-        descLabel.Size = UDim2.new(1, 0, 0, 17)
+        descLabel.Position = UDim2.fromOffset(0, 25)
+        descLabel.Size = UDim2.new(1, 0, 0, 18)
         descLabel.Font = Enum.Font.Gotham
-        descLabel.TextSize = 13
+        descLabel.TextSize = 14
         descLabel.TextColor3 = T.muted
         descLabel.TextXAlignment = Enum.TextXAlignment.Left
         descLabel.Text = description
@@ -1592,13 +1650,14 @@ do
         for tabName, state in pairs(tabButtons) do
             local selected = tabName == name
             tween(state.button, {
-                BackgroundColor3 = if selected then T.surfaceHover else T.surface2,
-                BackgroundTransparency = if selected then 0 else 0.35,
+                BackgroundColor3 = if selected then T.surfaceHover else T.surface,
+                BackgroundTransparency = if selected then 0.02 else 0.12,
                 TextColor3 = if selected then T.text else T.dim,
             }, 0.15)
+            state.button.Font = Enum.Font.GothamBold
             tween(state.stroke, {
-                Color = if selected then T.primary else T.border,
-                Transparency = if selected then 0.08 else 0.78,
+                Color = if selected then T.secondary else T.border,
+                Transparency = if selected then 0.16 else 0.7,
             }, 0.15)
             tween(state.indicator, { BackgroundTransparency = if selected then 0 else 1 }, 0.15)
         end
@@ -1607,14 +1666,14 @@ do
     local function makeTab(name: string, order: number)
         local button = Instance.new("TextButton")
         button.Name = name
-        button.BackgroundColor3 = T.surface2
-        button.BackgroundTransparency = 0.35
+        button.BackgroundColor3 = T.surface
+        button.BackgroundTransparency = 0.12
         button.Position = UDim2.fromOffset(7, 40 + (order - 1) * 48)
-        button.Size = UDim2.new(1, -14, 0, 42)
+        button.Size = UDim2.new(1, -14, 0, 40)
         button.BorderSizePixel = 0
         button.AutoButtonColor = false
-        button.Font = Enum.Font.GothamSemibold
-        button.TextSize = 14
+        button.Font = Enum.Font.GothamBold
+        button.TextSize = 15
         button.TextColor3 = T.dim
         button.TextXAlignment = Enum.TextXAlignment.Left
         button.Text = name
@@ -1622,14 +1681,14 @@ do
         button.Parent = sidebar
         corner(button, UDim.new(0, 9))
         local tabStroke = stroke(button, T.border, 1, 0.78)
-        pad(button, 22, 0, 10, 0)
+        pad(button, 29, 0, 10, 0)
 
         local indicator = Instance.new("Frame")
         indicator.Name = "ActiveIndicator"
         indicator.BackgroundColor3 = T.secondary
         indicator.BackgroundTransparency = 1
-        indicator.Position = UDim2.fromOffset(7, 10)
-        indicator.Size = UDim2.fromOffset(3, 20)
+        indicator.Position = UDim2.fromOffset(10, 9)
+        indicator.Size = UDim2.fromOffset(3, 22)
         indicator.BorderSizePixel = 0
         indicator.ZIndex = 10
         indicator.Parent = button
@@ -1639,7 +1698,7 @@ do
             if activeTab ~= name then tween(button, { BackgroundColor3 = T.surfaceHover }, 0.12) end
         end)
         button.MouseLeave:Connect(function()
-            if activeTab ~= name then tween(button, { BackgroundColor3 = T.surface2 }, 0.12) end
+            if activeTab ~= name then tween(button, { BackgroundColor3 = T.surface }, 0.12) end
         end)
         button.MouseButton1Click:Connect(function()
             showTab(name)
@@ -1665,23 +1724,23 @@ do
         local list = Instance.new("UIListLayout")
         list.FillDirection = Enum.FillDirection.Vertical
         list.SortOrder = Enum.SortOrder.LayoutOrder
-        list.Padding = UDim.new(0, 10)
+        list.Padding = UDim.new(0, 8)
         list.Parent = wrap
 
-        local listTitle = label(wrap, "Available games", UDim2.fromOffset(2, 0), UDim2.new(1, -2, 0, 20), 15, T.accent, true)
+        local listTitle = label(wrap, "Available games", UDim2.fromOffset(2, 0), UDim2.new(1, -2, 0, 20), 16, T.accent, true)
         listTitle.LayoutOrder = 1
 
         local grid = Instance.new("Frame")
         grid.BackgroundTransparency = 1
         local rows = math.ceil(#games / 2)
-        grid.Size = UDim2.new(1, 0, 0, rows * 38 + math.max(0, rows - 1) * 8)
+        grid.Size = UDim2.new(1, 0, 0, rows * 36 + math.max(0, rows - 1) * 7)
         grid.LayoutOrder = 2
         grid.ZIndex = 8
         grid.Parent = wrap
 
         local gridLayout = Instance.new("UIGridLayout")
-        gridLayout.CellSize = UDim2.fromOffset(206, 38)
-        gridLayout.CellPadding = UDim2.fromOffset(8, 8)
+        gridLayout.CellSize = UDim2.fromOffset(206, 36)
+        gridLayout.CellPadding = UDim2.fromOffset(8, 7)
         gridLayout.FillDirectionMaxCells = 2
         gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
         gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1695,7 +1754,7 @@ do
             gameButton.BackgroundColor3 = T.surface
             gameButton.BorderSizePixel = 0
             gameButton.Font = Enum.Font.Gotham
-            gameButton.TextSize = 13
+            gameButton.TextSize = 14
             gameButton.TextColor3 = T.dim
             gameButton.TextTruncate = Enum.TextTruncate.AtEnd
             gameButton.Text = gameName
@@ -1729,9 +1788,9 @@ do
         local launch = Instance.new("TextButton")
         launch.BackgroundColor3 = T.primary
         launch.BorderSizePixel = 0
-        launch.Size = UDim2.new(1, 0, 0, 40)
+        launch.Size = UDim2.new(1, 0, 0, 38)
         launch.Font = Enum.Font.GothamBold
-        launch.TextSize = 14
+        launch.TextSize = 15
         launch.TextColor3 = Color3.new(1, 1, 1)
         launch.Text = "Launch selected game"
         launch.AutoButtonColor = false
@@ -1761,10 +1820,10 @@ do
     end
 
     local function makeLockedState(parent: Instance, titleText: string, message: string): Frame
-        local state = makeCard(parent, 104)
+        local state = makeCard(parent, 88)
         state.Name = "LockedState"
-        label(state, titleText, UDim2.fromOffset(16, 15), UDim2.new(1, -32, 0, 20), 16, T.text, true)
-        label(state, message, UDim2.fromOffset(16, 42), UDim2.new(1, -32, 0, 34), 13, T.dim, false)
+        label(state, titleText, UDim2.fromOffset(16, 12), UDim2.new(1, -32, 0, 20), 17, T.text, true)
+        label(state, message, UDim2.fromOffset(16, 37), UDim2.new(1, -32, 0, 30), 14, T.dim, false)
         return state
     end
 
@@ -1772,11 +1831,11 @@ do
         local scroll = makePage(name)
         addPageTitle(scroll, name, description)
 
-        local accessCard = makeCard(scroll, 142)
+        local accessCard = makeCard(scroll, 130)
         accessCard.Name = "KeyAccess"
         accessCard.LayoutOrder = 2
-        label(accessCard, "License key", UDim2.fromOffset(16, 13), UDim2.new(1, -32, 0, 20), 16, T.text, true)
-        label(accessCard, "Enter the key assigned to your account.", UDim2.fromOffset(16, 39), UDim2.new(1, -32, 0, 16), 13, T.dim, false)
+        label(accessCard, "License key", UDim2.fromOffset(16, 12), UDim2.new(1, -32, 0, 20), 17, T.text, true)
+        label(accessCard, "Enter the key assigned to your account.", UDim2.fromOffset(16, 36), UDim2.new(1, -32, 0, 17), 14, T.dim, false)
 
         local keyBox = Instance.new("TextBox")
         keyBox.Name = "KeyInput"
@@ -1785,10 +1844,10 @@ do
         keyBox.ClearTextOnFocus = false
         keyBox.PlaceholderColor3 = T.muted
         keyBox.PlaceholderText = "Paste your key here"
-        keyBox.Position = UDim2.fromOffset(16, 66)
-        keyBox.Size = UDim2.new(1, -142, 0, 40)
+        keyBox.Position = UDim2.fromOffset(16, 59)
+        keyBox.Size = UDim2.new(1, -142, 0, 38)
         keyBox.Font = Enum.Font.Gotham
-        keyBox.TextSize = 14
+        keyBox.TextSize = 15
         keyBox.TextColor3 = T.text
         keyBox.TextXAlignment = Enum.TextXAlignment.Left
         keyBox.Text = ""
@@ -1808,11 +1867,11 @@ do
         verifyButton.Name = "VerifyKey"
         verifyButton.BackgroundColor3 = T.primary
         verifyButton.BorderSizePixel = 0
-        verifyButton.Position = UDim2.new(1, -110, 0, 66)
-        verifyButton.Size = UDim2.fromOffset(94, 40)
+        verifyButton.Position = UDim2.new(1, -110, 0, 59)
+        verifyButton.Size = UDim2.fromOffset(94, 38)
         verifyButton.AutoButtonColor = false
         verifyButton.Font = Enum.Font.GothamBold
-        verifyButton.TextSize = 14
+        verifyButton.TextSize = 15
         verifyButton.TextColor3 = Color3.new(1, 1, 1)
         verifyButton.Text = "Verify key"
         verifyButton.ZIndex = 10
@@ -1826,7 +1885,7 @@ do
             if verifyButton.Active then tween(verifyButton, { BackgroundColor3 = T.primary }, 0.12) end
         end)
 
-        local status = label(accessCard, "Enter a key to continue.", UDim2.fromOffset(16, 115), UDim2.new(1, -32, 0, 16), 13, T.muted, false)
+        local status = label(accessCard, "Enter a key to continue.", UDim2.fromOffset(16, 103), UDim2.new(1, -32, 0, 16), 14, T.muted, false)
         status.TextYAlignment = Enum.TextYAlignment.Center
 
         local lockedState = makeLockedState(scroll, "Premium content is locked", "Verify your key above to view supported games.")
@@ -1882,21 +1941,21 @@ do
         local scroll = makePage("Free")
         addPageTitle(scroll, "Free", "Confirm access to view Free games.")
 
-        local accessCard = makeCard(scroll, 126)
+        local accessCard = makeCard(scroll, 110)
         accessCard.Name = "FreeAccess"
         accessCard.LayoutOrder = 2
-        label(accessCard, "Free access", UDim2.fromOffset(16, 15), UDim2.new(1, -32, 0, 20), 16, T.text, true)
-        label(accessCard, "No key is required for Free games.", UDim2.fromOffset(16, 42), UDim2.new(1, -32, 0, 16), 13, T.dim, false)
+        label(accessCard, "Free access", UDim2.fromOffset(16, 12), UDim2.new(1, -32, 0, 20), 17, T.text, true)
+        label(accessCard, "No key is required for Free games.", UDim2.fromOffset(16, 36), UDim2.new(1, -32, 0, 17), 14, T.dim, false)
 
         local confirmButton = Instance.new("TextButton")
         confirmButton.Name = "ConfirmAccess"
         confirmButton.BackgroundColor3 = T.primary
         confirmButton.BorderSizePixel = 0
-        confirmButton.Position = UDim2.fromOffset(16, 70)
-        confirmButton.Size = UDim2.new(1, -32, 0, 40)
+        confirmButton.Position = UDim2.fromOffset(16, 64)
+        confirmButton.Size = UDim2.new(1, -32, 0, 36)
         confirmButton.AutoButtonColor = false
         confirmButton.Font = Enum.Font.GothamBold
-        confirmButton.TextSize = 14
+        confirmButton.TextSize = 15
         confirmButton.TextColor3 = Color3.new(1, 1, 1)
         confirmButton.Text = "Confirm access"
         confirmButton.ZIndex = 10
@@ -1931,10 +1990,10 @@ do
         local scroll = makePage("Info")
         addPageTitle(scroll, "Info", "Choose an access option to continue.")
 
-        local infoCard = makeCard(scroll, 104)
+        local infoCard = makeCard(scroll, 84)
         infoCard.LayoutOrder = 2
-        label(infoCard, "Animula Hub", UDim2.fromOffset(16, 15), UDim2.new(1, -32, 0, 20), 16, T.text, true)
-        label(infoCard, "Select Premium, Freemium, or Free from the navigation panel.", UDim2.fromOffset(16, 42), UDim2.new(1, -32, 0, 34), 13, T.dim, false)
+        label(infoCard, "Animula Hub", UDim2.fromOffset(16, 12), UDim2.new(1, -32, 0, 20), 17, T.text, true)
+        label(infoCard, "Select Premium, Freemium, or Free from the navigation panel.", UDim2.fromOffset(16, 37), UDim2.new(1, -32, 0, 30), 14, T.dim, false)
     end
 
     makeKeyPage("Premium", "Verify your Premium key to unlock Premium games.", GAMES_PREMIUM, "Premium", "pk")
