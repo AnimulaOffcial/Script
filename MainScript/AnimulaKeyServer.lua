@@ -36,7 +36,25 @@ else
 end
 
 local lastRequest: {[Player]: number} = {}
-local authorization: {[Player]: string} = {}
+type AccessGrant = {
+	keyType: string,
+	expiresAt: number?,
+}
+
+local authorization: {[Player]: AccessGrant} = {}
+
+local function unixExpiry(value: unknown): number?
+	if type(value) ~= "string" or value == "" then
+		return nil
+	end
+	local parsed, dateTime = pcall(function()
+		return DateTime.fromIsoDate(value)
+	end)
+	if parsed and typeof(dateTime) == "DateTime" then
+		return dateTime.UnixTimestamp
+	end
+	return nil
+end
 
 local function validKey(value: unknown): boolean
 	if type(value) ~= "string" or #value ~= 36 then
@@ -88,13 +106,19 @@ local function redeem(player: Player, key: string): {[string]: any}
 	local decodeOk, data = pcall(function()
 		return HttpService:JSONDecode(response.Body)
 	end)
-	if not decodeOk or type(data) ~= "table" or data.ok ~= true then
-		return { ok = false, error = "Key redemption was denied." }
+	if not decodeOk or type(data) ~= "table" then
+		return { ok = false, error_code = "invalid" }
+	end
+	if data.ok ~= true then
+		return { ok = false, error_code = if data.error_code == "expired" then "expired" else "invalid" }
 	end
 	if data.key_type ~= "pk" and data.key_type ~= "fk" then
 		return { ok = false, error = "Key type was not accepted." }
 	end
-	authorization[player] = data.key_type
+	authorization[player] = {
+		keyType = data.key_type,
+		expiresAt = unixExpiry(data.expires_at),
+	}
 	return {
 		ok = true,
 		key_type = data.key_type,
@@ -127,7 +151,12 @@ local function canLaunch(player: Player, tier: string): boolean
 	if tier == "Free" then
 		return true
 	end
-	local keyType = authorization[player]
+	local grant = authorization[player]
+	if grant and grant.expiresAt and grant.expiresAt <= os.time() then
+		authorization[player] = nil
+		grant = nil
+	end
+	local keyType = grant and grant.keyType
 	return (tier == "Freemium" and keyType == "fk") or (tier == "Premium" and keyType == "pk")
 end
 

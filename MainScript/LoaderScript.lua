@@ -176,29 +176,32 @@ end
 -- Key binding happens only through ServerScriptService. The server verifies
 -- Player.UserId and authenticates to the website with a Roblox Secret Store
 -- value; clients never call Supabase or submit an identity directly.
-local function redeemKey(key: string): (boolean, string, string?)
+local function redeemKey(key: string): (boolean, string, string?, string?)
 	local suffix = string.sub(key, -25)
 	if #key ~= 36
 		or string.match(key, "^Animula%-[pf]k%-[A-Za-z0-9]+$") == nil
 		or string.match(suffix, "[A-Z]") == nil
 		or string.match(suffix, "[a-z]") == nil
 		or string.match(suffix, "[0-9]") == nil then
-		return false, "Enter a valid Animula key.", nil
+		return false, "invalid", nil, nil
 	end
 	local broker = ReplicatedStorage:FindFirstChild("AnimulaKeyBroker")
 	if not broker or not broker:IsA("RemoteFunction") then
-		return false, "Secure key verification is not enabled for this experience.", nil
+		return false, "invalid", nil, nil
 	end
 	local invoked, data = pcall(function()
 		return broker:InvokeServer(key)
 	end)
 	if not invoked or type(data) ~= "table" then
-		return false, "Secure key verification is unavailable.", nil
+		return false, "invalid", nil, nil
 	end
 	if data.ok == true and (data.key_type == "pk" or data.key_type == "fk") then
-		return true, "Key verified.", data.key_type
+		return true, "verified", data.key_type, if type(data.expires_at) == "string" then data.expires_at else nil
 	end
-	return false, type(data.error) == "string" and data.error or "Key redemption was denied.", nil
+	if data.error_code == "expired" then
+		return false, "expired", nil, nil
+	end
+	return false, "invalid", nil, nil
 end
 
 -- Kept for the inactive legacy layout below; it uses the same secure broker.
@@ -1576,9 +1579,12 @@ do
         tabButtons[name] = { button = button, stroke = tabStroke }
     end
 
-    local function verifyAccess(key: string, expectedKeyType: string): boolean
-        local redeemed, _, redeemedKeyType = redeemKey(key)
-        return redeemed and redeemedKeyType == expectedKeyType
+    local function verifyAccess(key: string, expectedKeyType: string): (boolean, string, string?)
+        local redeemed, result, redeemedKeyType, expiresAt = redeemKey(key)
+        if redeemed and redeemedKeyType == expectedKeyType then
+            return true, result, expiresAt
+        end
+        return false, if result == "expired" then "expired" else "invalid", nil
     end
 
     local function makeGameList(parent: Instance, games: { string }, tier: string): Frame
@@ -1702,18 +1708,17 @@ do
         addPageTitle(scroll, name, description)
 
         local requiredPrefix = if expectedKeyType == "pk" then "Animula-pk-" else "Animula-fk-"
-        local keyLabel = if expectedKeyType == "pk" then "Premium" else "Freemium"
-        local function validateKeyFormat(key: string): (boolean, string)
+        local function validateKeyFormat(key: string): boolean
             if string.sub(key, 1, #requiredPrefix) ~= requiredPrefix then
-                return false, keyLabel .. " keys must begin with " .. requiredPrefix
+                return false
             end
 
             local suffix = string.sub(key, #requiredPrefix + 1)
-            if #suffix ~= 25 or not string.match(suffix, "^[%w]+$") then
-                return false, keyLabel .. " keys need 25 letters or numbers after " .. requiredPrefix
+            if #suffix ~= 25 or not string.match(suffix, "^[A-Za-z0-9]+$") then
+                return false
             end
 
-            return true, ""
+            return true
         end
 
         local accessCard = makeCard(scroll, 130)
@@ -1728,7 +1733,7 @@ do
         keyBox.BorderSizePixel = 0
         keyBox.ClearTextOnFocus = false
         keyBox.PlaceholderColor3 = T.muted
-        keyBox.PlaceholderText = requiredPrefix .. "XXXXXXXXXXXXXXXXXXXXXXXXX"
+        keyBox.PlaceholderText = requiredPrefix .. "xxxxx"
         keyBox.Position = UDim2.fromOffset(16, 59)
         keyBox.Size = UDim2.new(1, -142, 0, 38)
         keyBox.Font = Enum.Font.Gotham
@@ -1779,18 +1784,50 @@ do
         gameList.LayoutOrder = 4
 
         local checking = false
+        local function resetExpiredAccess()
+            checking = false
+            lockedState.Visible = true
+            gameList.Visible = false
+            keyBox.Text = ""
+            keyBox.TextEditable = true
+            verifyButton.Active = true
+            verifyButton.Text = "Redeem key"
+            verifyButton.BackgroundColor3 = T.primary
+            verifyStroke.Color = T.borderLight
+            status.Text = "Key expired. Generate a new key to continue."
+            status.TextColor3 = T.error
+        end
+
+        local function expireWhenNeeded(expiresAt: string?)
+            if not expiresAt then return end
+            local parsed, timestamp = pcall(function()
+                return DateTime.fromIsoDate(expiresAt :: string).UnixTimestamp
+            end)
+            if not parsed or type(timestamp) ~= "number" then return end
+            local secondsUntilExpiry = timestamp - os.time()
+            if secondsUntilExpiry <= 0 then
+                resetExpiredAccess()
+                return
+            end
+            task.delay(secondsUntilExpiry, function()
+                if loaderGui.Parent then
+                    resetExpiredAccess()
+                end
+            end)
+        end
+
         verifyButton.MouseButton1Click:Connect(function()
             if checking then return end
             local key = string.gsub(keyBox.Text, "^%s*(.-)%s*$", "%1")
             if key == "" then
-                status.Text = keyLabel .. " keys must begin with " .. requiredPrefix
+                status.Text = "Keys Invalid."
                 status.TextColor3 = T.error
                 return
             end
 
-            local hasValidFormat, formatMessage = validateKeyFormat(key)
+            local hasValidFormat = validateKeyFormat(key)
             if not hasValidFormat then
-                status.Text = formatMessage
+                status.Text = "Keys Invalid."
                 status.TextColor3 = T.error
                 return
             end
@@ -1803,7 +1840,7 @@ do
             status.TextColor3 = T.dim
 
             task.spawn(function()
-                local requestOk, allowed = pcall(verifyAccess, key, expectedKeyType)
+                local requestOk, allowed, resultCode, expiresAt = pcall(verifyAccess, key, expectedKeyType)
                 if not loaderGui.Parent then return end
                 if requestOk and allowed then
                     lockedState.Visible = false
@@ -1815,6 +1852,7 @@ do
                     status.Text = "Access verified. Select a game below."
                     status.TextColor3 = T.success
                     toast("Access verified", "Your game list is ready.", true)
+                    expireWhenNeeded(expiresAt)
                     return
                 end
 
@@ -1822,8 +1860,12 @@ do
                 verifyButton.Active = true
                 verifyButton.Text = "Redeem key"
                 verifyButton.BackgroundColor3 = T.primary
-                status.Text = "Key could not be verified. Try again."
-                status.TextColor3 = T.error
+                if requestOk and resultCode == "expired" then
+                    resetExpiredAccess()
+                else
+                    status.Text = "Keys Invalid."
+                    status.TextColor3 = T.error
+                end
             end)
         end)
     end
