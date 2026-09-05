@@ -7,7 +7,6 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
@@ -173,35 +172,34 @@ local function hoverGlow(obj: GuiObject, normalBg: Color3, strokeObj: UIStroke?,
 	end)
 end
 
--- Key binding happens only through ServerScriptService. The server verifies
--- Player.UserId and authenticates to the website with a Roblox Secret Store
--- value; clients never call Supabase or submit an identity directly.
-local function redeemKey(key: string): (boolean, string, string?, string?)
+-- The broker keeps the Supabase service credential on the server. The loader
+-- receives only verified, invalid, or expired status from the backend.
+local function redeemKey(key: string): (boolean, string, string?)
 	local suffix = string.sub(key, -25)
 	if #key ~= 36
 		or string.match(key, "^Animula%-[pf]k%-[A-Za-z0-9]+$") == nil
 		or string.match(suffix, "[A-Z]") == nil
 		or string.match(suffix, "[a-z]") == nil
 		or string.match(suffix, "[0-9]") == nil then
-		return false, "invalid", nil, nil
+		return false, "invalid", nil
 	end
 	local broker = ReplicatedStorage:FindFirstChild("AnimulaKeyBroker")
 	if not broker or not broker:IsA("RemoteFunction") then
-		return false, "invalid", nil, nil
+		return false, "invalid", nil
 	end
 	local invoked, data = pcall(function()
 		return broker:InvokeServer(key)
 	end)
 	if not invoked or type(data) ~= "table" then
-		return false, "invalid", nil, nil
+		return false, "invalid", nil
 	end
 	if data.ok == true and (data.key_type == "pk" or data.key_type == "fk") then
-		return true, "verified", data.key_type, if type(data.expires_at) == "string" then data.expires_at else nil
+		return true, "verified", data.key_type
 	end
 	if data.error_code == "expired" then
-		return false, "expired", nil, nil
+		return false, "expired", nil
 	end
-	return false, "invalid", nil, nil
+	return false, "invalid", nil
 end
 
 -- Kept for the inactive legacy layout below; it uses the same secure broker.
@@ -209,43 +207,49 @@ local function checkPremiumKey(key: string): (boolean, string, string?)
 	return redeemKey(key)
 end
 
--- Game modules are deployed by the experience owner in ServerStorage and run
--- through the server bridge. Mutable raw GitHub code is never fetched or run.
+local SCRIPT_BASE = "https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/"
+local GAME_SCRIPTS = {
+	Premium = {
+		Arsenal = "Menu/Premium/Game/Arsenal/ArsenalPremium.lua",
+		Rivals = "Menu/Premium/Game/Rivals/RivalsPremium.lua",
+	},
+	Freemium = {
+		Arsenal = "Menu/Free/Game/Arsenal/ArsenalFree.lua",
+		Rivals = "Menu/Free/Game/Rivals/RivalFree.lua",
+	},
+	Free = {
+		Arsenal = "Menu/Free/Game/Arsenal/ArsenalFree.lua",
+		Rivals = "Menu/Free/Game/Rivals/RivalFree.lua",
+	},
+}
+
 local function loadGameScript(gameName: string, tier: string): (boolean, string)
-	local launcher = ReplicatedStorage:FindFirstChild("AnimulaGameLaunch")
-	if not launcher or not launcher:IsA("RemoteFunction") then
-		return false, "Secure game modules are not enabled for this experience."
+	local paths = GAME_SCRIPTS[tier]
+	local path = paths and paths[gameName]
+	if not path or type(loadstring) ~= "function" then
+		return false, "unavailable"
 	end
-	local invoked, data = pcall(function()
-		return launcher:InvokeServer(gameName, tier)
+	local received, source = pcall(function()
+		return game:HttpGet(SCRIPT_BASE .. path)
 	end)
-	if not invoked or type(data) ~= "table" then
-		return false, "Secure game launch is unavailable."
+	if not received or type(source) ~= "string" then
+		return false, "unavailable"
 	end
-	if data.ok == true then
-		return true, type(data.message) == "string" and data.message or "loaded"
+	local compiled, compileError = loadstring(source)
+	if not compiled then
+		warn("[Animula] Game UI compile failed: " .. tostring(compileError))
+		return false, "unavailable"
 	end
-	return false, type(data.error) == "string" and data.error or "Game module is unavailable."
+	local launched, launchError = pcall(compiled)
+	if not launched then
+		warn("[Animula] Game UI launch failed: " .. tostring(launchError))
+		return false, "unavailable"
+	end
+	return true, "loaded"
 end
 
-local GAMES_FREE = {
-	"AdoptMe", "AllStarTowerDefense", "AnimeAdventures", "AnimeDimensions", "AnimeVanguards",
-	"Arsenal", "BasketballZero", "BedWars", "BeeSwarmSimulator", "BladeBall", "BloxFruits",
-	"BlueLockRivals", "BreakIn", "Brookhaven", "BubbleGumSimulatorInfinity", "BuildABoat",
-	"DOORS", "Fisch", "Forsaken", "GrowAGarden", "Jailbreak", "KingLegacy", "MicUp",
-	"MurderMystery2", "NinjaLegends", "PetSimulator99", "PetSimulatorX", "Piggy", "Pressure",
-	"Rivals", "RoyaleHigh", "ShindoLife", "SolsRNG", "StealABrainrot", "StrongestBattlegrounds",
-	"ToiletTowerDefense", "TowerDefenseSimulator", "TowerOfHell", "UntitledBoxingGame", "WelcomeToBloxburg",
-}
-local GAMES_PREMIUM = {
-	"AdoptMe", "AllStarTowerDefense", "AnimeAdventures", "AnimeDimensions", "AnimeVanguards",
-	"Arsenal", "BasketballZero", "BedWars", "BeeSwarmSimulator", "BladeBall", "BloxFruits",
-	"BlueLockRivals", "BreakIn", "Brookhaven", "BubbleGumSimulatorInfinity", "BuildABoat",
-	"DOORS", "Fisch", "Forsaken", "GrowAGarden", "Jailbreak", "KingLegacy", "MicUp",
-	"MurderMystery2", "NinjaLegends", "PetSimulator99", "PetSimulatorX", "Piggy", "Pressure",
-	"Rivals", "RoyaleHigh", "ShindoLife", "SolsRNG", "StealABrainrot", "StrongestBattlegrounds",
-	"ToiletTowerDefense", "TowerDefenseSimulator", "TowerOfHell", "UntitledBoxingGame", "WelcomeToBloxburg",
-}
+local GAMES_FREE = { "Arsenal", "Rivals" }
+local GAMES_PREMIUM = { "Arsenal", "Rivals" }
 local GAMES_FREEMIUM = GAMES_PREMIUM
 
 -- Legacy loader layout retained only for source history. The runtime UI below is standalone.
@@ -1579,12 +1583,12 @@ do
         tabButtons[name] = { button = button, stroke = tabStroke }
     end
 
-    local function verifyAccess(key: string, expectedKeyType: string): (boolean, string, string?)
-        local redeemed, result, redeemedKeyType, expiresAt = redeemKey(key)
+    local function verifyAccess(key: string, expectedKeyType: string): (boolean, string)
+        local redeemed, result, redeemedKeyType = redeemKey(key)
         if redeemed and redeemedKeyType == expectedKeyType then
-            return true, result, expiresAt
+            return true, result
         end
-        return false, if result == "expired" then "expired" else "invalid", nil
+        return false, if result == "expired" then "expired" else "invalid"
     end
 
     local function makeGameList(parent: Instance, games: { string }, tier: string): Frame
@@ -1794,26 +1798,8 @@ do
             verifyButton.Text = "Redeem key"
             verifyButton.BackgroundColor3 = T.primary
             verifyStroke.Color = T.borderLight
-            status.Text = "Key expired. Generate a new key to continue."
+            status.Text = "Keys Expired."
             status.TextColor3 = T.error
-        end
-
-        local function expireWhenNeeded(expiresAt: string?)
-            if not expiresAt then return end
-            local parsed, timestamp = pcall(function()
-                return DateTime.fromIsoDate(expiresAt :: string).UnixTimestamp
-            end)
-            if not parsed or type(timestamp) ~= "number" then return end
-            local secondsUntilExpiry = timestamp - os.time()
-            if secondsUntilExpiry <= 0 then
-                resetExpiredAccess()
-                return
-            end
-            task.delay(secondsUntilExpiry, function()
-                if loaderGui.Parent then
-                    resetExpiredAccess()
-                end
-            end)
         end
 
         verifyButton.MouseButton1Click:Connect(function()
@@ -1840,7 +1826,7 @@ do
             status.TextColor3 = T.dim
 
             task.spawn(function()
-                local requestOk, allowed, resultCode, expiresAt = pcall(verifyAccess, key, expectedKeyType)
+                local requestOk, allowed, resultCode = pcall(verifyAccess, key, expectedKeyType)
                 if not loaderGui.Parent then return end
                 if requestOk and allowed then
                     lockedState.Visible = false
@@ -1852,7 +1838,6 @@ do
                     status.Text = "Access verified. Select a game below."
                     status.TextColor3 = T.success
                     toast("Access verified", "Your game list is ready.", true)
-                    expireWhenNeeded(expiresAt)
                     return
                 end
 
