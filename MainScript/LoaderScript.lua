@@ -9,11 +9,8 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
-
--- supabase (project animula)
-local SUPABASE_URL = "https://eiykqbkfljqxwfqdffpo.supabase.co"
-local SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeWtxYmtmbGpxeHdmcWRmZnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4Mzg0NDIsImV4cCI6MjEwMzQxNDQ0Mn0.54QPoPN3LdV4gEqjEZydpI-bd3JZ_G9RZwlJIlxz3v4"
 
 -- tema hydro archon (biru furina)
 local T = {
@@ -176,95 +173,56 @@ local function hoverGlow(obj: GuiObject, normalBg: Color3, strokeObj: UIStroke?,
 	end)
 end
 
--- Supabase RPC access: the client can only check and redeem a key.
-local function checkKeyViaRpc(key: string): (boolean, string)
-	if key == "" then return false, "A key is required." end
-	if #key < 10 then return false, "The key is too short." end
-	local fn: any = (request or http_request or (syn and syn.request) or (http and http.request))
-	if fn then
-		local ok, res = pcall(function()
-			return fn({
-				Url = SUPABASE_URL .. "/rest/v1/rpc/animula_check_key",
-				Method = "POST",
-				Headers = {
-					["apikey"] = SUPABASE_ANON,
-					["Authorization"] = "Bearer " .. SUPABASE_ANON,
-					["Content-Type"] = "application/json",
-				},
-				Body = HttpService:JSONEncode({ p_key = key }),
-			})
-		end)
-		if ok and res and res.StatusCode and res.StatusCode >= 200 and res.StatusCode < 300 then
-			local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
-			if ok2 and data then
-				if data.ok then
-					local dl: string = if data.days_left == nil then "unlimited" else tostring(data.days_left) .. " days"
-					return true, "valid (" .. dl .. ")"
-				else
-					return false, data.error or "The key is invalid."
-				end
-			end
-		end
+-- Key binding happens only through ServerScriptService. The server verifies
+-- Player.UserId and authenticates to the website with a Roblox Secret Store
+-- value; clients never call Supabase or submit an identity directly.
+local function redeemKey(key: string): (boolean, string, string?)
+	local suffix = string.sub(key, -25)
+	if #key ~= 36
+		or string.match(key, "^Animula%-[pf]k%-[A-Za-z0-9]+$") == nil
+		or string.match(suffix, "[A-Z]") == nil
+		or string.match(suffix, "[a-z]") == nil
+		or string.match(suffix, "[0-9]") == nil then
+		return false, "Enter a valid Animula key.", nil
 	end
-	return false, "Unable to verify the key."
-end
-
-local function checkPremiumKey(key: string): (boolean, string)
-	return checkKeyViaRpc(key)
-end
-
-local function redeemKey(key: string): (boolean, string)
-	local uid: number = LocalPlayer and LocalPlayer.UserId or 0
-	local uname: string = LocalPlayer and LocalPlayer.Name or ""
-	if uid <= 0 then return false, "Roblox user ID is unavailable." end
-	local fn: any = (request or http_request or (syn and syn.request) or (http and http.request))
-	if not fn then return false, "The executor does not support HTTP requests." end
-	local ok, res = pcall(function()
-		return fn({
-			Url = SUPABASE_URL .. "/rest/v1/rpc/animula_redeem_key",
-			Method = "POST",
-			Headers = {
-				["apikey"] = SUPABASE_ANON,
-				["Authorization"] = "Bearer " .. SUPABASE_ANON,
-				["Content-Type"] = "application/json",
-			},
-			Body = HttpService:JSONEncode({
-				p_key = key,
-				p_roblox_user_id = uid,
-				p_roblox_username = uname,
-				p_ip = "",
-			}),
-		})
+	local broker = ReplicatedStorage:FindFirstChild("AnimulaKeyBroker")
+	if not broker or not broker:IsA("RemoteFunction") then
+		return false, "Secure key verification is not enabled for this experience.", nil
+	end
+	local invoked, data = pcall(function()
+		return broker:InvokeServer(key)
 	end)
-	if ok and res and res.StatusCode and res.StatusCode >= 200 and res.StatusCode < 300 then
-		local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
-		if ok2 and data then
-			if data.ok then return true, data.message or "Redeemed." else return false, data.error or "Unable to redeem the key." end
-		end
+	if not invoked or type(data) ~= "table" then
+		return false, "Secure key verification is unavailable.", nil
 	end
-	return false, "Unable to redeem the key."
+	if data.ok == true and (data.key_type == "pk" or data.key_type == "fk") then
+		return true, "Key verified.", data.key_type
+	end
+	return false, type(data.error) == "string" and data.error or "Key redemption was denied.", nil
 end
 
+-- Kept for the inactive legacy layout below; it uses the same secure broker.
+local function checkPremiumKey(key: string): (boolean, string, string?)
+	return redeemKey(key)
+end
+
+-- Game modules are deployed by the experience owner in ServerStorage and run
+-- through the server bridge. Mutable raw GitHub code is never fetched or run.
 local function loadGameScript(gameName: string, tier: string): (boolean, string)
-	local base = "https://raw.githubusercontent.com/AnimulaOffcial/Script/main/MainScript/MenuScript/" .. tier .. "/Game/" .. gameName .. "/" .. gameName .. "Loader.lua"
-	local ok, result = pcall(function()
-		if type(loadstring) ~= "function" then
-			error("The executor does not support loadstring.")
-		end
-		local code = game:HttpGet(base)
-		if type(code) ~= "string" or #code <= 10 then
-			error("The game script is empty or unavailable.")
-		end
-		local chunk, compileError = loadstring(code)
-		if not chunk then error(compileError or "The game script is invalid.") end
-		chunk()
-	end)
-	if not ok then
-		local message = tostring(result)
-		warn("[Animula] failed to load " .. gameName .. ": " .. message)
-		return false, message
+	local launcher = ReplicatedStorage:FindFirstChild("AnimulaGameLaunch")
+	if not launcher or not launcher:IsA("RemoteFunction") then
+		return false, "Secure game modules are not enabled for this experience."
 	end
-	return true, "loaded"
+	local invoked, data = pcall(function()
+		return launcher:InvokeServer(gameName, tier)
+	end)
+	if not invoked or type(data) ~= "table" then
+		return false, "Secure game launch is unavailable."
+	end
+	if data.ok == true then
+		return true, type(data.message) == "string" and data.message or "loaded"
+	end
+	return false, type(data.error) == "string" and data.error or "Game module is unavailable."
 end
 
 local GAMES_FREE = {
@@ -285,6 +243,7 @@ local GAMES_PREMIUM = {
 	"Rivals", "RoyaleHigh", "ShindoLife", "SolsRNG", "StealABrainrot", "StrongestBattlegrounds",
 	"ToiletTowerDefense", "TowerDefenseSimulator", "TowerOfHell", "UntitledBoxingGame", "WelcomeToBloxburg",
 }
+local GAMES_FREEMIUM = GAMES_PREMIUM
 
 -- Legacy loader layout retained only for source history. The runtime UI below is standalone.
 if false then
@@ -1688,11 +1647,9 @@ do
         tabButtons[name] = { button = button, indicator = indicator, stroke = tabStroke }
     end
 
-    local function verifyAccess(key: string): boolean
-        local redeemed = redeemKey(key)
-        if redeemed then return true end
-        local valid = checkPremiumKey(key)
-        return valid
+    local function verifyAccess(key: string, expectedKeyType: string): boolean
+        local redeemed, _, redeemedKeyType = redeemKey(key)
+        return redeemed and redeemedKeyType == expectedKeyType
     end
 
     local function makeGameList(parent: Instance, games: { string }, tier: string): Frame
@@ -1811,7 +1768,7 @@ do
         return state
     end
 
-    local function makeKeyPage(name: string, description: string, games: { string }, tier: string)
+    local function makeKeyPage(name: string, description: string, games: { string }, tier: string, expectedKeyType: string)
         local scroll = makePage(name)
         addPageTitle(scroll, name, description)
 
@@ -1895,7 +1852,7 @@ do
             status.TextColor3 = T.dim
 
             task.spawn(function()
-                local requestOk, allowed = pcall(verifyAccess, key)
+                local requestOk, allowed = pcall(verifyAccess, key, expectedKeyType)
                 if not loaderGui.Parent then return end
                 if requestOk and allowed then
                     lockedState.Visible = false
@@ -1980,8 +1937,8 @@ do
         label(infoCard, "Select Premium, Freemium, or Free from the navigation panel.", UDim2.fromOffset(16, 42), UDim2.new(1, -32, 0, 34), 13, T.dim, false)
     end
 
-    makeKeyPage("Premium", "Verify your key to unlock Premium games.", GAMES_PREMIUM, "Premium")
-    makeKeyPage("Freemium", "Verify your key to unlock Freemium games.", GAMES_PREMIUM, "Premium")
+    makeKeyPage("Premium", "Verify your Premium key to unlock Premium games.", GAMES_PREMIUM, "Premium", "pk")
+    makeKeyPage("Freemium", "Verify your Freemium key to unlock Freemium games.", GAMES_FREEMIUM, "Freemium", "fk")
     makeFreePage()
     makeInfoPage()
 
